@@ -1,0 +1,8 @@
+BasedOnStyle: LLVM   # or Google, Chromium, Mozilla, etc. as a base
+SortIncludes: false
+ColumnLimit: 0       # disables line wrapping entirely
+BinPackArguments: true
+BinPackParameters: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+

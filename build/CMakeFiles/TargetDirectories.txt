@@ -1,0 +1,4 @@
+/home/aaron/cpp/vulkan/build/CMakeFiles/VulkanTest.dir
+/home/aaron/cpp/vulkan/build/CMakeFiles/compile_shaders.dir
+/home/aaron/cpp/vulkan/build/CMakeFiles/edit_cache.dir
+/home/aaron/cpp/vulkan/build/CMakeFiles/rebuild_cache.dir
