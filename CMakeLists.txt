@@ -5,7 +5,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
-add_executable(VulkanTest src/main.cpp)
+add_executable(VulkanTest
+  src/Maze.cpp
+  src/engine.cpp
+  src/main.cpp
+)
 
 find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -14,6 +18,12 @@ pkg_check_modules(GLFW REQUIRED glfw3)
 target_include_directories(VulkanTest PRIVATE
     ${Vulkan_INCLUDE_DIRS}
     ${GLFW_INCLUDE_DIRS}
+)
+
+target_include_directories(VulkanTest
+  PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/include
+
 )
 
 target_link_libraries(VulkanTest

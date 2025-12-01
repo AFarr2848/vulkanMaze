@@ -8,7 +8,14 @@ struct UniformBuffer{
     float4x4 view;
     float4x4 proj;
   }
+[[vk::binding(0)]]
 ConstantBuffer<UniformBuffer> ubo;
+
+struct MaterialBuffer{
+    float3 test;
+  }
+[[vk::binding(1)]]
+ConstantBuffer<MaterialBuffer> buf;
 
 
 struct VertexOutput {
@@ -20,7 +27,7 @@ struct VertexOutput {
 VertexOutput vertMain(VSInput input){
   VertexOutput output;
   output.sv_position = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.pos, 1.0))));
-  output.color = float3(input.pos.x + 0.5, input.pos.y + 0.5, input.pos.z + 0.5);
+  output.color = float3(input.pos + 0.5);
   return output;
 
 }

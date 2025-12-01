@@ -1,8 +1,0 @@
-[
-{
-  "directory": "/home/aaron/cpp/vulkan/build",
-  "command": "/usr/bin/c++    -O2 -g -std=gnu++20 -o CMakeFiles/VulkanTest.dir/src/main.cpp.o -c /home/aaron/cpp/vulkan/src/main.cpp",
-  "file": "/home/aaron/cpp/vulkan/src/main.cpp",
-  "output": "CMakeFiles/VulkanTest.dir/src/main.cpp.o"
-}
-]
