@@ -1,12 +1,8 @@
-#include <chrono>
+#include <pch.hpp>
 #include <cstring>
 #include <glm/fwd.hpp>
 #include <vkMaze/engine.hpp>
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <cstdint>
-#include <vulkan/vulkan.hpp>
-#include "vulkan/vulkan.hpp"
-#include <vulkan/vulkan_raii.hpp>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -45,23 +41,27 @@ std::vector<uint16_t> VulkanEngine::getIndices() {
   throw std::runtime_error("getIndices() is not overridden!");
 }
 
+void VulkanEngine::drawScreen() {
+}
+
 void VulkanEngine::updateMaterialUniformBuffer(uint32_t currentImage) {
   MaterialUBO ubo{};
-  ubo.idk = glm::vec3(1.0f);
+  updateUBO(ubo);
   memcpy(materialUBOMapped[currentImage], &ubo, sizeof(ubo));
 }
 
+void VulkanEngine::mouseMoved(float xoffset, float yoffset) {
+}
+
+void VulkanEngine::updateTransforms(GlobalUBO &ubo) {
+}
+
+void VulkanEngine::updateUBO(MaterialUBO &ubo) {
+}
+
 void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
-  static auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
   GlobalUBO ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 10.0f);
-  ubo.proj[1][1] *= -1;
+  updateTransforms(ubo);
 
   memcpy(globalUBOMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -82,12 +82,34 @@ void VulkanEngine::initWindow() {
 
   window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
   glfwSetWindowUserPointer(window, this);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+  glfwSetCursorPosCallback(window, GLFWMouseCallback);
 }
 
 void VulkanEngine::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
   auto app = reinterpret_cast<VulkanEngine *>(glfwGetWindowUserPointer(window));
   app->framebufferResized = true;
+}
+
+void VulkanEngine::GLFWMouseCallback(GLFWwindow *window, double xposIn, double yposIn) {
+  VulkanEngine *engine = static_cast<VulkanEngine *>(glfwGetWindowUserPointer(window));
+  float xpos = static_cast<float>(xposIn);
+  float ypos = static_cast<float>(yposIn);
+
+  if (engine->firstMouse) {
+    engine->lastX = xpos;
+    engine->lastY = ypos;
+    engine->firstMouse = false;
+  }
+
+  float xoffset = xpos - engine->lastX;
+  float yoffset = ypos - engine->lastY;
+
+  engine->lastX = xpos;
+  engine->lastY = ypos;
+
+  engine->mouseMoved(xoffset, yoffset);
 }
 
 void VulkanEngine::initVulkan() {
@@ -237,7 +259,6 @@ void VulkanEngine::createDescriptorPool() {
 void VulkanEngine::createUniformBuffers() {
   globalUBOs.clear();
   globalUBOMemory.clear();
-  globalUBOMapped.clear();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vk::DeviceSize bufferSize = sizeof(GlobalUBO);
@@ -662,6 +683,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
 
   commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
   commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+  drawScreen();
   commandBuffers[currentFrame].endRendering();
   // After rendering, transition the swapchain image to PRESENT_SRC
   transition_image_layout(
@@ -849,5 +871,3 @@ std::vector<char> VulkanEngine::readFile(const std::string &filename) {
   file.close();
   return buffer;
 };
-
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS

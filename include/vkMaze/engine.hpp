@@ -1,10 +1,7 @@
 #pragma once
+#include <pch.hpp>
 #include <glm/fwd.hpp>
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <cstdint>
-#include <vulkan/vulkan.hpp>
-#include "vulkan/vulkan.hpp"
-#include <vulkan/vulkan_raii.hpp>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -32,7 +29,7 @@ struct GlobalUBO {
 };
 
 struct MaterialUBO {
-  glm::vec3 idk = glm::vec3(1.0f, 1.0f, 1.0f);
+  std::array<glm::mat4, 10000> transforms;
 };
 
 struct Vertex {
@@ -46,13 +43,20 @@ struct Vertex {
 class VulkanEngine {
 public:
   bool framebufferResized = false;
+  uint32_t currentFrame = 0;
   void run();
 
 protected:
   virtual std::vector<Vertex> getVertices();
   virtual std::vector<uint16_t> getIndices();
-  virtual void updateMaterialUniformBuffer(uint32_t currentImage);
-  virtual void updateGlobalUniformBuffer(uint32_t currentImage);
+  virtual void drawScreen();
+  virtual void mouseMoved(float xoffset, float yoffset);
+  virtual void updateTransforms(GlobalUBO &ubo);
+  virtual void updateUBO(MaterialUBO &ubo);
+
+  std::vector<vk::raii::CommandBuffer> commandBuffers;
+  std::vector<void *> materialUBOMapped;
+  vk::Extent2D swapChainExtent;
 
 private:
   GLFWwindow *window = nullptr;
@@ -67,7 +71,6 @@ private:
   vk::raii::SwapchainKHR swapChain = nullptr;
   std::vector<vk::Image> swapChainImages;
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
-  vk::Extent2D swapChainExtent;
   std::vector<vk::raii::ImageView> swapChainImageViews;
 
   vk::raii::DescriptorPool descriptorPool = nullptr;
@@ -77,7 +80,6 @@ private:
   vk::raii::Pipeline graphicsPipeline = nullptr;
 
   vk::raii::CommandPool commandPool = nullptr;
-  std::vector<vk::raii::CommandBuffer> commandBuffers;
 
   vk::raii::Buffer vertexBuffer = nullptr;
   vk::raii::DeviceMemory vertexBufferMemory = nullptr;
@@ -90,13 +92,14 @@ private:
 
   std::vector<vk::raii::Buffer> materialUBOs;
   std::vector<vk::raii::DeviceMemory> materialUBOMemory;
-  std::vector<void *> materialUBOMapped;
 
   std::vector<vk::raii::Semaphore> presentCompleteSemaphore;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphore;
   std::vector<vk::raii::Fence> inFlightFences;
   uint32_t semaphoreIndex = 0;
-  uint32_t currentFrame = 0;
+
+  bool firstMouse = false;
+  int lastX, lastY;
 
   std::vector<const char *> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName,
@@ -107,7 +110,11 @@ private:
   };
 
   void initWindow();
+
   static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
+
+  static void GLFWMouseCallback(GLFWwindow *window, double xposIn, double yposIn);
+
   void initVulkan();
 
   void mainLoop();
@@ -117,6 +124,9 @@ private:
   void createDescriptorPool();
   void createUniformBuffers();
   void createVertexBuffer();
+
+  void updateMaterialUniformBuffer(uint32_t currentImage);
+  void updateGlobalUniformBuffer(uint32_t currentImage);
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory);
 
@@ -183,5 +193,3 @@ private:
 
   static std::vector<char> readFile(const std::string &filename);
 };
-
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS

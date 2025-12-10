@@ -1,6 +1,4 @@
-#ifndef MAZE_H
-#define MAZE_H
-
+#pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -22,5 +20,3 @@ void carveFrom(int cx, int cy, std::vector<std::vector<cell>> &maze);
 std::vector<glm::mat4> mazeToTransforms(float xScale, float yScale, float zScale, std::vector<std::vector<cell>> const &maze);
 std::vector<glm::mat4> test(float xScale, float yScale, float zScale, std::vector<std::vector<cell>> maze);
 std::vector<float> mazeToBounds(float xScale, float yScale, float zScale, std::vector<std::vector<cell>> maze);
-
-#endif

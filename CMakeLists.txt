@@ -13,7 +13,12 @@ add_executable(VulkanTest
 
 find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(GLFW REQUIRED glfw3)
+
+target_compile_definitions(VulkanTest PRIVATE
+    VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+)
 
 target_include_directories(VulkanTest PRIVATE
     ${Vulkan_INCLUDE_DIRS}
@@ -24,6 +29,10 @@ target_include_directories(VulkanTest
   PUBLIC
       ${CMAKE_CURRENT_SOURCE_DIR}/include
 
+)
+
+target_precompile_headers(VulkanTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/pch.hpp
 )
 
 target_link_libraries(VulkanTest

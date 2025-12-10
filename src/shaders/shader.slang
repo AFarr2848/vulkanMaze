@@ -12,9 +12,10 @@ struct UniformBuffer{
 ConstantBuffer<UniformBuffer> ubo;
 
 struct MaterialBuffer{
-    float3 test;
+    float4x4[10000] transforms;
   }
 [[vk::binding(1)]]
+
 ConstantBuffer<MaterialBuffer> buf;
 
 
@@ -37,5 +38,6 @@ VertexOutput vertMain(VSInput input){
 float4 fragMain(VertexOutput inVert) : SV_Target
 {
     float3 color = inVert.color;
+
     return float4(color, 1.0);
   }
