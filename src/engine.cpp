@@ -1,3 +1,4 @@
+#include "vulkan/vulkan.hpp"
 #include <pch.hpp>
 #include <cstring>
 #include <glm/fwd.hpp>
@@ -12,6 +13,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <fstream>
+#include <vulkan/vulkan_raii.hpp>
 
 #define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
 #include <GLFW/glfw3.h>
@@ -46,24 +48,39 @@ void VulkanEngine::drawScreen() {
 
 void VulkanEngine::updateMaterialUniformBuffer(uint32_t currentImage) {
   MaterialUBO ubo{};
-  updateUBO(ubo);
+  updateUBOData(ubo);
   memcpy(materialUBOMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 void VulkanEngine::mouseMoved(float xoffset, float yoffset) {
 }
 
-void VulkanEngine::updateTransforms(GlobalUBO &ubo) {
+void VulkanEngine::processInput(GLFWwindow *window) {
 }
 
-void VulkanEngine::updateUBO(MaterialUBO &ubo) {
+void VulkanEngine::updateStorageData(TransformStorage &storage) {
+}
+
+void VulkanEngine::updateCameraTransforms(GlobalUBO &ubo) {
+}
+
+void VulkanEngine::updateUBOData(MaterialUBO &ubo) {
 }
 
 void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
   GlobalUBO ubo{};
-  updateTransforms(ubo);
+  updateCameraTransforms(ubo);
 
   memcpy(globalUBOMapped[currentImage], &ubo, sizeof(ubo));
+}
+
+void VulkanEngine::updateTransformStorageBuffer() {
+  TransformStorage transforms{};
+  updateStorageData(transforms);
+  instanceCount = sizeof(transforms);
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    memcpy(transSSBOMapped[i], &transforms, instanceCount);
+  }
 }
 
 std::vector<const char *> requiredDeviceExtension = {
@@ -129,6 +146,9 @@ void VulkanEngine::initVulkan() {
   createIndexBuffer();
   std::printf("Creating uniform buffers...\n");
   createUniformBuffers();
+  std::printf("Creating storage buffers...\n");
+  createStorageBuffers();
+  updateTransformStorageBuffer();
   std::printf("Creating descriptor pool...\n");
   createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
@@ -142,10 +162,19 @@ void VulkanEngine::initVulkan() {
 void VulkanEngine::mainLoop() {
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+    keepTime();
+    processInput(window);
     drawFrame();
   }
+  std::cout << "should close" << std::endl;
 
   device.waitIdle();
+}
+
+void VulkanEngine::keepTime() {
+  float currentTime = static_cast<float>(glfwGetTime());
+  deltaTime = currentTime - time;
+  time = currentTime;
 }
 
 void VulkanEngine::createGlobalDescriptorSetLayout() {
@@ -166,11 +195,20 @@ void VulkanEngine::createGlobalDescriptorSetLayout() {
 
   };
 
-  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding, uboMaterialLayoutBinding};
+  vk::DescriptorSetLayoutBinding transformLayoutBinding{
+      .binding = 2,
+      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .pImmutableSamplers = nullptr
+
+  };
+
+  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding, uboMaterialLayoutBinding, transformLayoutBinding};
 
   vk::DescriptorSetLayoutCreateInfo layoutInfo{
       .flags = {},
-      .bindingCount = 2,
+      .bindingCount = 3,
       .pBindings = layouts.data()
 
   };
@@ -210,6 +248,13 @@ void VulkanEngine::createDescriptorSets() {
     };
     std::cout << "matInfo complete" << std::endl;
 
+    vk::DescriptorBufferInfo transInfo{
+        .buffer = *transSSBOs[i],
+        .offset = 0,
+        .range = sizeof(glm::mat4) * MAX_TRANSFORM_SIZE
+
+    };
+
     vk::WriteDescriptorSet camWrite{
         .dstSet = descriptorSets[i],
         .dstBinding = 0,
@@ -232,7 +277,17 @@ void VulkanEngine::createDescriptorSets() {
     };
     std::cout << "MatWrite complete" << std::endl;
 
-    std::vector<vk::WriteDescriptorSet> writes = {camWrite, matWrite};
+    vk::WriteDescriptorSet transWrite{
+        .dstSet = descriptorSets[i],
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &transInfo
+
+    };
+
+    std::vector<vk::WriteDescriptorSet> writes = {camWrite, matWrite, transWrite};
 
     std::printf("updating descriptor sets\n");
     device.updateDescriptorSets(writes, {});
@@ -240,16 +295,23 @@ void VulkanEngine::createDescriptorSets() {
 }
 
 void VulkanEngine::createDescriptorPool() {
-  vk::DescriptorPoolSize poolSize{
+  vk::DescriptorPoolSize poolSizeUniform{
       .type = vk::DescriptorType::eUniformBuffer,
       .descriptorCount = MAX_FRAMES_IN_FLIGHT * 2
 
   };
+
+  vk::DescriptorPoolSize poolSizeStorage{
+      .type = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = MAX_FRAMES_IN_FLIGHT * 1};
+
+  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeStorage};
+
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
       .maxSets = MAX_FRAMES_IN_FLIGHT,
-      .poolSizeCount = 1,
-      .pPoolSizes = &poolSize
+      .poolSizeCount = 2,
+      .pPoolSizes = poolSizes.data()
 
   };
 
@@ -284,6 +346,20 @@ void VulkanEngine::createUniformBuffers() {
     materialUBOs.emplace_back(std::move(buffer));
     materialUBOMemory.emplace_back(std::move(bufferMem));
     materialUBOMapped.emplace_back(materialUBOMemory[i].mapMemory(0, bufferSize));
+  }
+}
+
+void VulkanEngine::createStorageBuffers() {
+  transSSBOs.clear();
+  transSSBOMemory.clear();
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vk::DeviceSize bufferSize = sizeof(TransformStorage);
+    vk::raii::Buffer buffer({});
+    vk::raii::DeviceMemory bufferMem({});
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, buffer, bufferMem);
+    transSSBOs.emplace_back(std::move(buffer));
+    transSSBOMemory.emplace_back(std::move(bufferMem));
+    transSSBOMapped.emplace_back(transSSBOMemory[i].mapMemory(0, bufferSize));
   }
 }
 
@@ -682,7 +758,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
   commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
 
   commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
-  commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+  commandBuffers[currentFrame].drawIndexed(indices.size(), instanceCount, 0, 0, 0);
   drawScreen();
   commandBuffers[currentFrame].endRendering();
   // After rendering, transition the swapchain image to PRESENT_SRC

@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 add_executable(VulkanTest
-  src/Maze.cpp
   src/engine.cpp
   src/main.cpp
 )

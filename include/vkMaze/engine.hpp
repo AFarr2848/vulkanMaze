@@ -12,6 +12,7 @@
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+constexpr int MAX_TRANSFORM_SIZE = 10000;
 
 const std::vector<char const *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -29,7 +30,10 @@ struct GlobalUBO {
 };
 
 struct MaterialUBO {
-  std::array<glm::mat4, 10000> transforms;
+};
+
+struct alignas(16) TransformStorage {
+  glm::mat4 transforms[MAX_TRANSFORM_SIZE];
 };
 
 struct Vertex {
@@ -51,15 +55,20 @@ protected:
   virtual std::vector<uint16_t> getIndices();
   virtual void drawScreen();
   virtual void mouseMoved(float xoffset, float yoffset);
-  virtual void updateTransforms(GlobalUBO &ubo);
-  virtual void updateUBO(MaterialUBO &ubo);
+  virtual void updateCameraTransforms(GlobalUBO &ubo);
+  virtual void updateUBOData(MaterialUBO &ubo);
+  virtual void processInput(GLFWwindow *window);
+  virtual void updateStorageData(TransformStorage &storage);
 
   std::vector<vk::raii::CommandBuffer> commandBuffers;
   std::vector<void *> materialUBOMapped;
+  std::vector<void *> transSSBOMapped;
   vk::Extent2D swapChainExtent;
+  GLFWwindow *window = nullptr;
+  float time;
+  float deltaTime;
 
 private:
-  GLFWwindow *window = nullptr;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -93,13 +102,17 @@ private:
   std::vector<vk::raii::Buffer> materialUBOs;
   std::vector<vk::raii::DeviceMemory> materialUBOMemory;
 
+  std::vector<vk::raii::Buffer> transSSBOs;
+  std::vector<vk::raii::DeviceMemory> transSSBOMemory;
+
   std::vector<vk::raii::Semaphore> presentCompleteSemaphore;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphore;
   std::vector<vk::raii::Fence> inFlightFences;
   uint32_t semaphoreIndex = 0;
 
-  bool firstMouse = false;
+  bool firstMouse = true;
   int lastX, lastY;
+  uint32_t instanceCount;
 
   std::vector<const char *> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName,
@@ -124,9 +137,11 @@ private:
   void createDescriptorPool();
   void createUniformBuffers();
   void createVertexBuffer();
+  void createStorageBuffers();
 
   void updateMaterialUniformBuffer(uint32_t currentImage);
   void updateGlobalUniformBuffer(uint32_t currentImage);
+  void updateTransformStorageBuffer();
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory);
 
@@ -176,6 +191,8 @@ private:
   void createSyncObjects();
 
   void drawFrame();
+
+  void keepTime();
 
   [[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char> &code) const;
 

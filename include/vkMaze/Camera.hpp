@@ -86,7 +86,7 @@ public:
   }
 
   // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
-  void processKeyboard(Camera_Movement direction, float deltaTime, std::vector<float> bounds) {
+  void processKeyboard(Camera_Movement direction, float deltaTime) {
     Position = moveCamera(direction, deltaTime);
   }
 
@@ -110,6 +110,7 @@ public:
   void ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
+    std::cout << xoffset << std::endl;
 
     Yaw += xoffset;
     Pitch -= yoffset;
