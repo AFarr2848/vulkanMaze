@@ -110,7 +110,6 @@ public:
   void ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
-    std::cout << xoffset << std::endl;
 
     Yaw += xoffset;
     Pitch -= yoffset;

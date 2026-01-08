@@ -1,10 +1,12 @@
 #pragma once
+#include "vulkan/vulkan.hpp"
 #include <pch.hpp>
 #include <glm/fwd.hpp>
 #include <cstdint>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 #define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
 #include <GLFW/glfw3.h>
@@ -12,7 +14,6 @@
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-constexpr int MAX_TRANSFORM_SIZE = 10000;
 
 const std::vector<char const *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -32,17 +33,13 @@ struct GlobalUBO {
 struct MaterialUBO {
 };
 
-struct alignas(16) TransformStorage {
-  glm::mat4 transforms[MAX_TRANSFORM_SIZE];
-};
-
 struct Vertex {
   glm::vec3 pos;
   glm::vec3 normal;
   glm::vec2 uv;
 
   static vk::VertexInputBindingDescription getBindingDescription();
-  static std::array<vk::VertexInputAttributeDescription, 1> getAttributeDescriptions();
+  static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
 };
 class VulkanEngine {
 public:
@@ -58,7 +55,6 @@ protected:
   virtual void updateCameraTransforms(GlobalUBO &ubo);
   virtual void updateUBOData(MaterialUBO &ubo);
   virtual void processInput(GLFWwindow *window);
-  virtual void updateStorageData(TransformStorage &storage);
 
   std::vector<vk::raii::CommandBuffer> commandBuffers;
   std::vector<void *> materialUBOMapped;
@@ -105,6 +101,10 @@ private:
   std::vector<vk::raii::Buffer> transSSBOs;
   std::vector<vk::raii::DeviceMemory> transSSBOMemory;
 
+  vk::raii::Image depthImage = nullptr;
+  vk::raii::DeviceMemory depthImageMemory = nullptr;
+  vk::raii::ImageView depthImageView = nullptr;
+
   std::vector<vk::raii::Semaphore> presentCompleteSemaphore;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphore;
   std::vector<vk::raii::Fence> inFlightFences;
@@ -132,18 +132,20 @@ private:
 
   void mainLoop();
   void createGlobalDescriptorSetLayout();
-
+  ;
   void createDescriptorSets();
   void createDescriptorPool();
   void createUniformBuffers();
   void createVertexBuffer();
-  void createStorageBuffers();
 
   void updateMaterialUniformBuffer(uint32_t currentImage);
   void updateGlobalUniformBuffer(uint32_t currentImage);
-  void updateTransformStorageBuffer();
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory);
+  void createDepthResources();
+
+  vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+  vk::Format findDepthFormat();
 
   void createIndexBuffer();
 
@@ -154,6 +156,10 @@ private:
   void cleanup();
 
   void copyBuffer(vk::raii::Buffer &srcBuffer, vk::raii::Buffer &dstBuffer, vk::DeviceSize size);
+
+  void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory);
+
+  vk::raii::ImageView createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags);
 
   void recreateSwapChain();
 
@@ -180,13 +186,14 @@ private:
   void recordCommandBuffer(uint32_t imageIndex);
 
   void transition_image_layout(
-      uint32_t imageIndex,
+      vk::Image image,
       vk::ImageLayout old_layout,
       vk::ImageLayout new_layout,
       vk::AccessFlags2 src_access_mask,
       vk::AccessFlags2 dst_access_mask,
       vk::PipelineStageFlags2 src_stage_mask,
-      vk::PipelineStageFlags2 dst_stage_mask);
+      vk::PipelineStageFlags2 dst_stage_mask,
+      vk::ImageAspectFlags image_aspect_flags);
 
   void createSyncObjects();
 
