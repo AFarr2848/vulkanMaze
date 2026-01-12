@@ -1,9 +1,10 @@
 
-#include "vkMaze/engine.hpp"
 #include <glm/detail/qualifier.hpp>
 #include <glm/common.hpp>
 #include <glm/fwd.hpp>
 #include <vector>
+#include <vkMaze/Vertex.hpp>
+#include <glm/glm.hpp>
 
 class MeshRange {
 public:

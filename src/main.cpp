@@ -1,10 +1,13 @@
 #include <algorithm>
-#include <pch.hpp>
-#include <vkMaze/engine.hpp>
+#include <vkMaze/VulkanEngine.hpp>
 #include <vkMaze/Camera.hpp>
 #include <vector>
 #include <iostream>
 #include <vkMaze/Shapes.hpp>
+#include <vkMaze/Swapchain.hpp>
+#include <vkMaze/UBOs.hpp>
+#include <vkMaze/FrameData.hpp>
+#include <GLFW/glfw3.h>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -48,7 +51,7 @@ private:
     ubo.model = glm::mat4(1.0f);
     // ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = camera.GetViewMatrix();
-    ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 100.0f);
+    ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swp->swapChainExtent.width) / static_cast<float>(swp->swapChainExtent.height), 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
   }
 
@@ -61,7 +64,7 @@ private:
 
   void drawScreen() override {
     for (MeshRange m : offsets) {
-      commandBuffers[currentFrame].drawIndexed(m.indexCount, 1, m.indexOffset, m.vertexOffset, 0);
+      frames->commandBuffers[currentFrame].drawIndexed(m.indexCount, 1, m.indexOffset, m.vertexOffset, 0);
     }
   }
 
@@ -91,6 +94,7 @@ int main() {
   try {
     VKMaze app;
     app.makeShapes();
+    std::cout << "Shapes made" << std::endl;
 
     app.run();
   } catch (const std::exception &e) {

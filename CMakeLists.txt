@@ -6,7 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 add_executable(VulkanTest
-  src/engine.cpp
+  src/Buffers.cpp
+  src/Descriptors.cpp
+  src/FrameData.cpp
+  src/GraphicsPipeline.cpp
+  src/Images.cpp
+  src/Swapchain.cpp
+  src/VulkanContext.cpp
+  src/VulkanEngine.cpp
+  src/Window.cpp
   src/main.cpp
 )
 
