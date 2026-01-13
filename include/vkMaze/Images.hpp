@@ -5,6 +5,7 @@ class Images {
 public:
   void init(VulkanContext &cxt, Swapchain &swp) {
     this->cxt = &cxt;
+    this->swp = &swp;
   }
 
   vk::raii::Image depthImage = nullptr;

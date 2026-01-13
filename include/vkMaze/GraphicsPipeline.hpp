@@ -1,3 +1,4 @@
+#pragma once
 class VulkanContext;
 class Descriptors;
 class Swapchain;

@@ -1,3 +1,4 @@
+#pragma once
 class VulkanContext;
 class Buffers;
 
@@ -6,6 +7,7 @@ class Descriptors {
 public:
   void init(VulkanContext &cxt, Buffers &buf) {
     this->cxt = &cxt;
+    this->buf = &buf;
   }
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;

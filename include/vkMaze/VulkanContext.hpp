@@ -26,7 +26,7 @@ public:
   vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 private:
-  Window *win;
+  Window *win = nullptr;
 
   vk::raii::Context context;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;

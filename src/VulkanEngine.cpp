@@ -1,3 +1,5 @@
+#define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "vkMaze/VulkanEngine.hpp"
 #include "vkMaze/VulkanContext.hpp"
 #include "vkMaze/Window.hpp"
@@ -36,13 +38,16 @@ void VulkanEngine::run() {
   std::cout << "Descriptors init complete" << std::endl;
   pipeline->init(*cxt, *dsc, *swp, *img);
   std::cout << "Pipeline init complete" << std::endl;
-  buf->init(*cxt, *this, *frames);
+  buf->init(*this, *cxt, *frames);
   std::cout << "Buffer init complete" << std::endl;
   img->init(*cxt, *swp);
   std::cout << "Image init complete" << std::endl;
 
   win->initWindow();
+  std::cout << "Window created" << std::endl;
+
   initVulkan();
+  std::cout << "Vulkan init complete" << std::endl;
   mainLoop();
   cleanup();
 }
@@ -210,13 +215,19 @@ void VulkanEngine::initVulkan() {
   cxt->createInstance();
   cxt->setupDebugMessenger();
   cxt->createSurface();
+  std::cout << "Surface created" << std::endl;
   cxt->pickPhysicalDevice();
   cxt->createLogicalDevice();
+  std::cout << "Logical device created" << std::endl;
+
   swp->createSwapChain();
   swp->createImageViews();
   dsc->createGlobalDescriptorSetLayout();
+  std::cout << "Created global descriptor set layout" << std::endl;
   pipeline->createGraphicsPipeline();
+  std::cout << "Pipeline created" << std::endl;
   frames->createCommandPool();
+  std::cout << "Command pool created" << std::endl;
   img->createDepthResources();
   std::printf("Creating vertex buffer...\n");
   buf->createVertexBuffer();

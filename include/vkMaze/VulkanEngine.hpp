@@ -1,7 +1,7 @@
+#pragma once
 class VulkanContext;
 class Swapchain;
 class FrameData;
-class Window;
 class GraphicsPipeline;
 class Buffers;
 class Images;
@@ -10,6 +10,7 @@ class Vertex;
 class GlobalUBO;
 class MaterialUBO;
 class GLFWwindow;
+class Window;
 
 class VulkanEngine {
 public:
@@ -18,6 +19,17 @@ public:
   float deltaTime;
   uint32_t semaphoreIndex = 0;
   bool framebufferResized = false;
+
+  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, GraphicsPipeline &pipeline, Buffers &buf) {
+    this->win = &win;
+    this->cxt = &cxt;
+    this->swp = &swp;
+    this->frames = &frames;
+    this->img = &img;
+    this->dsc = &dsc;
+    this->pipeline = &pipeline;
+    this->buf = &buf;
+  }
 
   void run();
   void initVulkan();
@@ -47,6 +59,9 @@ public:
       vk::ImageAspectFlags image_aspect_flags);
 
 protected:
+  void updateGlobalUniformBuffer(uint32_t currentFrame);
+  void updateMaterialUniformBuffer(uint32_t currentFrame);
+
   Window *win;
   VulkanContext *cxt;
   Swapchain *swp;
@@ -55,7 +70,4 @@ protected:
   Buffers *buf;
   Images *img;
   Descriptors *dsc;
-
-  void updateGlobalUniformBuffer(uint32_t currentFrame);
-  void updateMaterialUniformBuffer(uint32_t currentFrame);
 };

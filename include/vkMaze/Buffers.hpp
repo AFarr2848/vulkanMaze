@@ -1,14 +1,15 @@
-
+#pragma once
 class VulkanContext;
 class VulkanEngine;
 class FrameData;
+class Vertex;
 
 class Buffers {
 
 public:
-  void init(VulkanContext &ctx, VulkanEngine &eng, FrameData &frame) {
-    this->ctx = &ctx;
+  void init(VulkanEngine &eng, VulkanContext &ctx, FrameData &frame) {
     this->eng = &eng;
+    this->ctx = &ctx;
     this->frame = &frame;
   }
 
@@ -34,5 +35,7 @@ public:
 private:
   VulkanContext *ctx;
   VulkanEngine *eng;
+  std::vector<Vertex> *vertices;
+  std::vector<uint16_t> *indices;
   FrameData *frame;
 };

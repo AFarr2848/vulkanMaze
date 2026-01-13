@@ -1,3 +1,9 @@
+#include "vkMaze/VulkanContext.hpp"
+#include "vkMaze/Window.hpp"
+#include "vkMaze/GraphicsPipeline.hpp"
+#include "vkMaze/Buffers.hpp"
+#include "vkMaze/Images.hpp"
+#include "vkMaze/Descriptors.hpp"
 #include <algorithm>
 #include <vkMaze/VulkanEngine.hpp>
 #include <vkMaze/Camera.hpp>
@@ -10,6 +16,15 @@
 #include <GLFW/glfw3.h>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
+
+Window win;
+VulkanContext cxt;
+Swapchain swp;
+FrameData frames;
+GraphicsPipeline pipeline;
+Buffers buf;
+Images img;
+Descriptors dsc;
 
 class VKMaze : public VulkanEngine {
 public:
@@ -96,6 +111,7 @@ int main() {
     app.makeShapes();
     std::cout << "Shapes made" << std::endl;
 
+    app.init(win, cxt, swp, frames, img, dsc, pipeline, buf);
     app.run();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
