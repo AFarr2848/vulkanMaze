@@ -112,8 +112,9 @@ void VulkanEngine::drawFrame() {
   try {
     const vk::PresentInfoKHR presentInfoKHR{.waitSemaphoreCount = 1, .pWaitSemaphores = &*frames->renderFinishedSemaphore[imageIndex], .swapchainCount = 1, .pSwapchains = &*swp->swapChain, .pImageIndices = &imageIndex};
     result = cxt->graphicsQueue.presentKHR(presentInfoKHR);
-    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
-      framebufferResized = false;
+    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || win->framebufferResized) {
+      win->framebufferResized = false;
+      std::cout << "FRAMEBUFFER RESIZED" << std::endl;
       swp->recreateSwapChain();
     } else if (result != vk::Result::eSuccess) {
       throw std::runtime_error("failed to present swap chain image!");
@@ -247,6 +248,13 @@ void VulkanEngine::initVulkan() {
 
 void VulkanEngine::cleanup() {
   glfwDestroyWindow(win->window);
+  cxt = nullptr;
+  win = nullptr;
+  buf = nullptr;
+  dsc = nullptr;
+  frames = nullptr;
+  pipeline = nullptr;
+  swp = nullptr;
 
   glfwTerminate();
 }

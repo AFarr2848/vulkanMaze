@@ -33,6 +33,8 @@ public:
     addShape(floorCube);
     Cube cube(glm::mat4(1.0f));
     addShape(cube);
+    // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
+    // addShape(lightCube);
     std::cout << "Cube vertex count: " << cube.vertices.size() << std::endl;
   }
 
@@ -68,6 +70,7 @@ private:
     ubo.view = camera.GetViewMatrix();
     ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swp->swapChainExtent.width) / static_cast<float>(swp->swapChainExtent.height), 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
+    ubo.cameraPos = camera.Position;
   }
 
   void updateUBOData(MaterialUBO &ubo) override {

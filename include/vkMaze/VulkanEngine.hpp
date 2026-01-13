@@ -18,7 +18,6 @@ public:
   float time;
   float deltaTime;
   uint32_t semaphoreIndex = 0;
-  bool framebufferResized = false;
 
   void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, GraphicsPipeline &pipeline, Buffers &buf) {
     this->win = &win;
