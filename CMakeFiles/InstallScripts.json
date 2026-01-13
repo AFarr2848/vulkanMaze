@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/aaron/cpp/vulkan/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
