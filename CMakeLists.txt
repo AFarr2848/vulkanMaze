@@ -9,17 +9,20 @@ add_executable(VulkanTest
   src/Buffers.cpp
   src/Descriptors.cpp
   src/FrameData.cpp
-  src/GraphicsPipeline.cpp
+  src/Pipelines.cpp
   src/Images.cpp
   src/Swapchain.cpp
   src/VulkanContext.cpp
   src/VulkanEngine.cpp
   src/Window.cpp
   src/main.cpp
+  src/Mesh.cpp
 )
 
 find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(assimp REQUIRED)
+
 
 pkg_check_modules(GLFW REQUIRED glfw3)
 
@@ -47,6 +50,7 @@ target_link_libraries(VulkanTest
     ${GLFW_LIBRARIES}
     dl
     pthread
+    assimp
 )
 
 # ---- Shader compilation section ----

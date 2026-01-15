@@ -4,7 +4,7 @@
 #include "vkMaze/VulkanContext.hpp"
 #include "vkMaze/Window.hpp"
 #include "vkMaze/Swapchain.hpp"
-#include "vkMaze/GraphicsPipeline.hpp"
+#include "vkMaze/Pipelines.hpp"
 #include "vkMaze/FrameData.hpp"
 #include "vkMaze/Buffers.hpp"
 #include "vkMaze/Descriptors.hpp"
@@ -36,8 +36,6 @@ void VulkanEngine::run() {
   std::cout << "Frames init complete" << std::endl;
   dsc->init(*cxt, *buf);
   std::cout << "Descriptors init complete" << std::endl;
-  pipeline->init(*cxt, *dsc, *swp, *img);
-  std::cout << "Pipeline init complete" << std::endl;
   buf->init(*this, *cxt, *frames);
   std::cout << "Buffer init complete" << std::endl;
   img->init(*cxt, *swp);
@@ -132,7 +130,7 @@ void VulkanEngine::drawFrame() {
 }
 
 void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
-  std::vector<uint16_t> indices = getIndices();
+  std::vector<uint32_t> indices = getIndices();
   frames->commandBuffers[currentFrame].begin({});
   // Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
   transition_image_layout(
@@ -182,14 +180,12 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
 
   };
   frames->commandBuffers[currentFrame].beginRendering(renderingInfo);
-  frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline->graphicsPipeline);
   frames->commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
   frames->commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
 
   frames->commandBuffers[currentFrame].bindVertexBuffers(0, *buf->vertexBuffer, {0});
-  frames->commandBuffers[currentFrame].bindIndexBuffer(*buf->indexBuffer, 0, vk::IndexType::eUint16);
+  frames->commandBuffers[currentFrame].bindIndexBuffer(*buf->indexBuffer, 0, vk::IndexType::eUint32);
 
-  frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
   drawScreen();
   frames->commandBuffers[currentFrame].endRendering();
   // After rendering, transition the swapchain image to PRESENT_SRC
@@ -225,7 +221,7 @@ void VulkanEngine::initVulkan() {
   swp->createImageViews();
   dsc->createGlobalDescriptorSetLayout();
   std::cout << "Created global descriptor set layout" << std::endl;
-  pipeline->createGraphicsPipeline();
+  createPipelines();
   std::cout << "Pipeline created" << std::endl;
   frames->createCommandPool();
   std::cout << "Command pool created" << std::endl;
@@ -253,7 +249,6 @@ void VulkanEngine::cleanup() {
   buf = nullptr;
   dsc = nullptr;
   frames = nullptr;
-  pipeline = nullptr;
   swp = nullptr;
 
   glfwTerminate();
@@ -300,5 +295,6 @@ void VulkanEngine::mouseMoved(float, float) {};
 void VulkanEngine::updateCameraTransforms(GlobalUBO &) {};
 void VulkanEngine::updateUBOData(MaterialUBO &) {};
 void VulkanEngine::processInput(GLFWwindow *) {};
+void VulkanEngine::createPipelines() {};
 std::vector<Vertex> VulkanEngine::getVertices() { return {}; };
-std::vector<uint16_t> VulkanEngine::getIndices() { return {}; };
+std::vector<uint32_t> VulkanEngine::getIndices() { return {}; };

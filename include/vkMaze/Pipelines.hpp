@@ -1,10 +1,20 @@
 #pragma once
+#include "vulkan/vulkan.hpp"
 class VulkanContext;
 class Descriptors;
 class Swapchain;
 class Images;
 
-class GraphicsPipeline {
+struct PipelineDsc {
+  std::string shaderPath;
+  vk::PrimitiveTopology topology;
+  vk::PolygonMode polygonMode;
+  vk::CullModeFlags cullModeFlags;
+
+  vk::DescriptorSetLayout descriptorSetLayout;
+};
+
+class Pipeline {
 public:
   void init(VulkanContext &cxt, Descriptors &dsc, Swapchain &swp, Images &img) {
     this->cxt = &cxt;
@@ -13,7 +23,7 @@ public:
     this->img = &img;
   }
 
-  void cleanup(VkDevice device);
+  void createPipeline(const PipelineDsc &dsc);
 
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;

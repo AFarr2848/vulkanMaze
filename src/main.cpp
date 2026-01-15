@@ -1,10 +1,12 @@
 #include "vkMaze/VulkanContext.hpp"
 #include "vkMaze/Window.hpp"
-#include "vkMaze/GraphicsPipeline.hpp"
+#include "vkMaze/Pipelines.hpp"
 #include "vkMaze/Buffers.hpp"
 #include "vkMaze/Images.hpp"
 #include "vkMaze/Descriptors.hpp"
+#include "vulkan/vulkan.hpp"
 #include <algorithm>
+#include <numbers>
 #include <vkMaze/VulkanEngine.hpp>
 #include <vkMaze/Camera.hpp>
 #include <vector>
@@ -21,7 +23,8 @@ Window win;
 VulkanContext cxt;
 Swapchain swp;
 FrameData frames;
-GraphicsPipeline pipeline;
+Pipeline pipelinePhong;
+Pipeline pipelineUnlit;
 Buffers buf;
 Images img;
 Descriptors dsc;
@@ -30,9 +33,12 @@ class VKMaze : public VulkanEngine {
 public:
   void makeShapes() {
     Cube floorCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 0.2f, 5.0f)), glm::vec3(0.0f, -8.0f, 0.0f)));
-    addShape(floorCube);
+    addShape(floorCube, *&pipelinePhong);
     Cube cube(glm::mat4(1.0f));
-    addShape(cube);
+    addShape(cube, *&pipelineUnlit);
+    Mesh backpack("models/Survival_BackPack_2.fbx", "", glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f)));
+    addShape(backpack, *&pipelinePhong);
+
     // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
     // addShape(lightCube);
     std::cout << "Cube vertex count: " << cube.vertices.size() << std::endl;
@@ -40,15 +46,39 @@ public:
 
 private:
   std::vector<Vertex> vertices;
-  std::vector<uint16_t> indices;
+  std::vector<uint32_t> indices;
   std::vector<MeshRange> offsets;
 
-  void addShape(Shape shape) {
+  void createPipelines() override {
+    pipelinePhong.init(*cxt, *dsc, *swp, *img);
+    pipelinePhong.createPipeline({
+
+        .shaderPath = "build/shaders/shader.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eBack,
+        .descriptorSetLayout = dsc->descriptorSetLayout
+
+    });
+    pipelineUnlit.init(*cxt, *dsc, *swp, *img);
+    pipelineUnlit.createPipeline({
+
+        .shaderPath = "build/shaders/shader.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eLine,
+        .cullModeFlags = vk::CullModeFlagBits::eBack,
+        .descriptorSetLayout = dsc->descriptorSetLayout
+
+    });
+  }
+
+  void addShape(Shape shape, Pipeline &pipeline) {
     MeshRange offset{
 
         .vertexOffset = static_cast<uint32_t>(vertices.size()),
         .indexOffset = static_cast<uint32_t>(indices.size()),
-        .indexCount = static_cast<uint32_t>(shape.indices.size())
+        .indexCount = static_cast<uint32_t>(shape.indices.size()),
+        .pipeline = &pipeline
 
     };
 
@@ -76,12 +106,14 @@ private:
   void updateUBOData(MaterialUBO &ubo) override {
   }
 
-  std::vector<uint16_t> getIndices() override {
+  std::vector<uint32_t> getIndices() override {
     return indices;
   }
 
   void drawScreen() override {
     for (MeshRange m : offsets) {
+      frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, m.pipeline->graphicsPipeline);
+      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
       frames->commandBuffers[currentFrame].drawIndexed(m.indexCount, 1, m.indexOffset, m.vertexOffset, 0);
     }
   }
@@ -114,7 +146,7 @@ int main() {
     app.makeShapes();
     std::cout << "Shapes made" << std::endl;
 
-    app.init(win, cxt, swp, frames, img, dsc, pipeline, buf);
+    app.init(win, cxt, swp, frames, img, dsc, buf);
     app.run();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

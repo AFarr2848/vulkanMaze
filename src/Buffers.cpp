@@ -41,7 +41,7 @@ void Buffers::createVertexBuffer() {
 }
 
 void Buffers::createIndexBuffer() {
-  std::vector<uint16_t> indices = eng->getIndices();
+  std::vector<uint32_t> indices = eng->getIndices();
   vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
   vk::raii::Buffer stagingBuffer = nullptr;

@@ -1,22 +1,52 @@
 
+#include <assimp/matrix4x4.h>
 #include <glm/detail/qualifier.hpp>
 #include <glm/common.hpp>
 #include <glm/fwd.hpp>
+#include <iostream>
 #include <vector>
 #include <vkMaze/Vertex.hpp>
 #include <glm/glm.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+class Pipeline;
 
 class MeshRange {
 public:
   uint32_t vertexOffset;
   uint32_t indexOffset;
   uint32_t indexCount;
+
+  Pipeline *pipeline;
 };
 
 class Shape {
 public:
   std::vector<Vertex> vertices = std::vector<Vertex>();
-  std::vector<uint16_t> indices = std::vector<uint16_t>();
+  std::vector<uint32_t> indices = std::vector<uint32_t>();
+};
+
+class Mesh : public Shape {
+public:
+  Mesh(std::string modelPath, std::string texPath, glm::mat4 transform) {
+    this->modelPath = modelPath;
+    this->texPath = texPath;
+    this->trans = transform;
+
+    loadModel();
+  }
+
+private:
+  std::string modelPath;
+  std::string texPath;
+  glm::mat4 trans;
+  void loadModel();
+
+  void processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 parentTransform);
+  void processNode(aiNode *node, const aiScene *scene, glm::mat4 transform);
+  glm::mat4 assimpToGlm(aiMatrix4x4 a);
 };
 
 class Cube : public Shape {

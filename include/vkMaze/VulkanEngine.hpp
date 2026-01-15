@@ -2,7 +2,6 @@
 class VulkanContext;
 class Swapchain;
 class FrameData;
-class GraphicsPipeline;
 class Buffers;
 class Images;
 class Descriptors;
@@ -19,14 +18,13 @@ public:
   float deltaTime;
   uint32_t semaphoreIndex = 0;
 
-  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, GraphicsPipeline &pipeline, Buffers &buf) {
+  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf) {
     this->win = &win;
     this->cxt = &cxt;
     this->swp = &swp;
     this->frames = &frames;
     this->img = &img;
     this->dsc = &dsc;
-    this->pipeline = &pipeline;
     this->buf = &buf;
   }
 
@@ -40,8 +38,9 @@ public:
   void recordCommandBuffer(uint32_t imageIndex);
   Window getWindow();
   virtual std::vector<Vertex> getVertices();
-  virtual std::vector<uint16_t> getIndices();
+  virtual std::vector<uint32_t> getIndices();
 
+  virtual void createPipelines();
   virtual void drawScreen();
   virtual void mouseMoved(float xoffset, float yoffset);
   virtual void updateCameraTransforms(GlobalUBO &ubo);
@@ -65,7 +64,6 @@ protected:
   VulkanContext *cxt;
   Swapchain *swp;
   FrameData *frames;
-  GraphicsPipeline *pipeline;
   Buffers *buf;
   Images *img;
   Descriptors *dsc;

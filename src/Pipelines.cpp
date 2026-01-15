@@ -1,4 +1,4 @@
-#include "vkMaze/GraphicsPipeline.hpp"
+#include "vkMaze/Pipelines.hpp"
 #include "vkMaze/Vertex.hpp"
 #include "vkMaze/VulkanContext.hpp"
 #include "vkMaze/Util.hpp"
@@ -6,8 +6,8 @@
 #include "vkMaze/Swapchain.hpp"
 #include "vkMaze/Images.hpp"
 
-void GraphicsPipeline::createGraphicsPipeline() {
-  vk::raii::ShaderModule shaderModule = createShaderModule(readFile("build/shaders/shader.spv"));
+void Pipeline::createPipeline(const PipelineDsc &dsc) {
+  vk::raii::ShaderModule shaderModule = createShaderModule(readFile(dsc.shaderPath));
 
   vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule, .pName = "vertMain"};
   vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "fragMain"};
@@ -22,14 +22,14 @@ void GraphicsPipeline::createGraphicsPipeline() {
       .pVertexAttributeDescriptions = attributeDescriptions.data()
 
   };
-  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology = vk::PrimitiveTopology::eTriangleList};
+  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology = dsc.topology};
   vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1, .scissorCount = 1};
 
   vk::PipelineRasterizationStateCreateInfo rasterizer{
       .depthClampEnable = vk::False,
       .rasterizerDiscardEnable = vk::False,
-      .polygonMode = vk::PolygonMode::eFill,
-      .cullMode = vk::CullModeFlagBits::eBack,
+      .polygonMode = dsc.polygonMode,
+      .cullMode = dsc.cullModeFlags,
       .frontFace = vk::FrontFace::eCounterClockwise,
       .depthBiasEnable = vk::False,
       .depthBiasSlopeFactor = 1.0f,
@@ -60,7 +60,7 @@ void GraphicsPipeline::createGraphicsPipeline() {
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
       .setLayoutCount = 1,
-      .pSetLayouts = &*dsc->descriptorSetLayout,
+      .pSetLayouts = &dsc.descriptorSetLayout,
       .pushConstantRangeCount = 0
 
   };
@@ -85,7 +85,7 @@ void GraphicsPipeline::createGraphicsPipeline() {
   graphicsPipeline = vk::raii::Pipeline(cxt->device, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
 }
 
-[[nodiscard]] vk::raii::ShaderModule GraphicsPipeline::createShaderModule(const std::vector<char> &code) const {
+[[nodiscard]] vk::raii::ShaderModule Pipeline::createShaderModule(const std::vector<char> &code) const {
   vk::ShaderModuleCreateInfo createInfo{.codeSize = code.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t *>(code.data())};
   vk::raii::ShaderModule shaderModule{cxt->device, createInfo};
 
