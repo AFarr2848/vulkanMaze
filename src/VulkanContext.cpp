@@ -1,6 +1,7 @@
-#include "vkMaze/VulkanContext.hpp"
-#include "vkMaze/EngineConfig.hpp"
-#include "vkMaze/Window.hpp"
+#include "vkMaze/Components/VulkanContext.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Components/Window.hpp"
+#include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <ostream>
@@ -45,7 +46,10 @@ void VulkanContext::createInstance() {
       .ppEnabledLayerNames = requiredLayers.data(),
       .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
       .ppEnabledExtensionNames = requiredExtensions.data()};
+  std::cout << "Creating instanct" << std::endl;
+
   instance = vk::raii::Instance(context, createInfo);
+  std::cout << *instance << std::endl;
 }
 
 std::vector<const char *> VulkanContext::getRequiredExtensions() {
@@ -54,6 +58,7 @@ std::vector<const char *> VulkanContext::getRequiredExtensions() {
 
   std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
   if (enableValidationLayers) {
+    std::cout << "DEBUG EXTENSION REQUESTED" << std::endl;
     extensions.push_back(vk::EXTDebugUtilsExtensionName);
   }
 
@@ -67,10 +72,15 @@ void VulkanContext::setupDebugMessenger() {
   vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
   vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
   vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT{
+      .pNext = nullptr,
       .messageSeverity = severityFlags,
       .messageType = messageTypeFlags,
-      .pfnUserCallback = &VulkanContext::debugCallback};
+      .pfnUserCallback = &debugCallback
+
+  };
+  std::cout << "bro what" << std::endl;
   debugMessenger = instance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfoEXT);
+  std::cout << "wwaaaaahhhhh" << std::endl;
 }
 
 void VulkanContext::createLogicalDevice() {
@@ -89,17 +99,11 @@ void VulkanContext::createLogicalDevice() {
     throw std::runtime_error("Could not find a queue for graphics and present -> terminating");
   }
 
-  // query for Vulkan 1.3 features
-  vk::StructureChain<vk::PhysicalDeviceFeatures2,
-                     vk::PhysicalDeviceVulkan11Features,
-                     vk::PhysicalDeviceVulkan13Features,
-                     vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
-      featureChain = {
-          {},                                                   // vk::PhysicalDeviceFeatures2
-          {.shaderDrawParameters = true},                       // vk::PhysicalDeviceVulkan11Features
-          {.synchronization2 = true, .dynamicRendering = true}, // vk::PhysicalDeviceVulkan13Features
-          {.extendedDynamicState = true}                        // vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
-      };
+  vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
+      {.features = {.fillModeNonSolid = true, .samplerAnisotropy = true}}, // vk::PhysicalDeviceFeatures2
+      {.synchronization2 = true, .dynamicRendering = true},                // vk::PhysicalDeviceVulkan13Features
+      {.extendedDynamicState = true}                                       // vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
+  };
 
   // create a Device
   float queuePriority = 0.0f;
@@ -111,6 +115,7 @@ void VulkanContext::createLogicalDevice() {
                                         .ppEnabledExtensionNames = requiredDeviceExtension.data()};
 
   device = vk::raii::Device(physicalDevice, deviceCreateInfo);
+  std::cout << "device createtetetetteet" << std::endl;
   graphicsQueue = vk::raii::Queue(device, queueIndex, 0);
 }
 

@@ -1,10 +1,11 @@
-#include "vkMaze/Descriptors.hpp"
-#include "vkMaze/EngineConfig.hpp"
-#include "vkMaze/VulkanContext.hpp"
-#include "vkMaze/UBOs.hpp"
-#include "vkMaze/Buffers.hpp"
+#include "vkMaze/Components/Descriptors.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Components/VulkanContext.hpp"
+#include "vkMaze/Objects/UBOs.hpp"
+#include "vkMaze/Components/Buffers.hpp"
+#include "vulkan/vulkan.hpp"
 #include <iostream>
-void Descriptors::createDescriptorSets() {
+void Descriptors::createGlobalDescriptorSets() {
   std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
   std::printf("created layouts\n");
 
@@ -26,15 +27,6 @@ void Descriptors::createDescriptorSets() {
 
     };
     std::cout << "CamInfo complete" << std::endl;
-    std::cout << buf->materialUBOs.size() << std::endl;
-
-    vk::DescriptorBufferInfo matInfo{
-        .buffer = buf->materialUBOs[i],
-        .offset = 0,
-        .range = sizeof(MaterialUBO)
-
-    };
-    std::cout << "matInfo complete" << std::endl;
 
     vk::WriteDescriptorSet camWrite{
         .dstSet = descriptorSets[i],
@@ -47,18 +39,7 @@ void Descriptors::createDescriptorSets() {
     };
     std::cout << "CamWrite complete" << std::endl;
 
-    vk::WriteDescriptorSet matWrite{
-        .dstSet = descriptorSets[i],
-        .dstBinding = 1,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .pBufferInfo = &matInfo
-
-    };
-    std::cout << "MatWrite complete" << std::endl;
-
-    std::vector<vk::WriteDescriptorSet> writes = {camWrite, matWrite};
+    std::vector<vk::WriteDescriptorSet> writes = {camWrite};
 
     std::printf("updating descriptor sets\n");
     cxt->device.updateDescriptorSets(writes, {});
@@ -73,20 +54,12 @@ void Descriptors::createGlobalDescriptorSetLayout() {
       .pImmutableSamplers = nullptr
 
   };
-  vk::DescriptorSetLayoutBinding uboMaterialLayoutBinding{
-      .binding = 1,
-      .descriptorType = vk::DescriptorType::eUniformBuffer,
-      .descriptorCount = 1,
-      .stageFlags = vk::ShaderStageFlagBits::eVertex,
-      .pImmutableSamplers = nullptr
 
-  };
-
-  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding, uboMaterialLayoutBinding};
+  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding};
 
   vk::DescriptorSetLayoutCreateInfo layoutInfo{
       .flags = {},
-      .bindingCount = 2,
+      .bindingCount = 1,
       .pBindings = layouts.data()
 
   };
@@ -94,22 +67,65 @@ void Descriptors::createGlobalDescriptorSetLayout() {
   descriptorSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
 }
 
+void Descriptors::createMaterialDescriptorSetLayout() {
+  vk::DescriptorSetLayoutBinding samplerBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{
+      .bindingCount = 1,
+      .pBindings = &samplerBinding};
+
+  matSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
+}
+
 void Descriptors::createDescriptorPool() {
   vk::DescriptorPoolSize poolSizeUniform{
       .type = vk::DescriptorType::eUniformBuffer,
-      .descriptorCount = MAX_FRAMES_IN_FLIGHT * 2
+      .descriptorCount = MAX_FRAMES_IN_FLIGHT
 
   };
 
-  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform};
+  vk::DescriptorPoolSize poolSizeMat{
+      .type = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = 10};
+
+  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeMat};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = MAX_FRAMES_IN_FLIGHT,
-      .poolSizeCount = 1,
+      .maxSets = MAX_FRAMES_IN_FLIGHT + 10,
+      .poolSizeCount = 2,
       .pPoolSizes = poolSizes.data()
 
   };
 
   descriptorPool = vk::raii::DescriptorPool(cxt->device, poolInfo);
+}
+
+vk::raii::DescriptorSet Descriptors::createMaterialDescriptorSet(vk::ImageView imageView, vk::Sampler sampler) {
+  vk::DescriptorSetAllocateInfo allocInfo{
+      .descriptorPool = *descriptorPool,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &*matSetLayout};
+
+  auto set = std::move(cxt->device.allocateDescriptorSets(allocInfo)[0]);
+
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = sampler,
+      .imageView = imageView,
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+  vk::WriteDescriptorSet write{
+      .dstSet = *set,
+      .dstBinding = 0,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo};
+
+  cxt->device.updateDescriptorSets(write, nullptr);
+  return set;
 }

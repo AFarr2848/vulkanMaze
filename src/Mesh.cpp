@@ -1,6 +1,7 @@
-#include "vkMaze/Shapes.hpp"
+#include "vkMaze/Objects/Shapes.hpp"
 #include <assimp/matrix4x4.h>
 #include <glm/fwd.hpp>
+#include <iostream>
 
 void Mesh::loadModel() {
   Assimp::Importer import;

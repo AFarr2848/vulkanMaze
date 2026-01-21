@@ -1,17 +1,17 @@
 #define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include "vkMaze/VulkanEngine.hpp"
-#include "vkMaze/VulkanContext.hpp"
-#include "vkMaze/Window.hpp"
-#include "vkMaze/Swapchain.hpp"
-#include "vkMaze/Pipelines.hpp"
-#include "vkMaze/FrameData.hpp"
-#include "vkMaze/Buffers.hpp"
-#include "vkMaze/Descriptors.hpp"
-#include "vkMaze/Images.hpp"
-#include "vkMaze/EngineConfig.hpp"
-#include "vkMaze/Vertex.hpp"
-#include "vkMaze/UBOs.hpp"
+#include "vkMaze/Components/VulkanContext.hpp"
+#include "vkMaze/Components/VulkanEngine.hpp"
+#include "vkMaze/Components/Window.hpp"
+#include "vkMaze/Components/Swapchain.hpp"
+#include "vkMaze/Components/Buffers.hpp"
+#include "vkMaze/Components/FrameData.hpp"
+#include "vkMaze/Components/Descriptors.hpp"
+#include "vkMaze/Objects/Pipelines.hpp"
+#include "vkMaze/Components/Images.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Objects/Vertex.hpp"
+#include "vkMaze/Objects/UBOs.hpp"
 #include <iostream>
 
 vk::VertexInputBindingDescription Vertex::getBindingDescription() {
@@ -38,7 +38,7 @@ void VulkanEngine::run() {
   std::cout << "Descriptors init complete" << std::endl;
   buf->init(*this, *cxt, *frames);
   std::cout << "Buffer init complete" << std::endl;
-  img->init(*cxt, *swp);
+  img->init(*cxt, *swp, *frames);
   std::cout << "Image init complete" << std::endl;
 
   win->initWindow();
@@ -60,12 +60,6 @@ void VulkanEngine::mainLoop() {
   std::cout << "should close" << std::endl;
 
   cxt->device.waitIdle();
-}
-
-void VulkanEngine::updateMaterialUniformBuffer(uint32_t currentImage) {
-  MaterialUBO ubo{};
-  updateUBOData(ubo);
-  memcpy(buf->materialUBOMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
@@ -92,7 +86,6 @@ void VulkanEngine::drawFrame() {
   frames->commandBuffers[currentFrame].reset();
   recordCommandBuffer(imageIndex);
   updateGlobalUniformBuffer(currentFrame);
-  updateMaterialUniformBuffer(currentFrame);
 
   vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
   const vk::SubmitInfo submitInfo{
@@ -126,14 +119,15 @@ void VulkanEngine::drawFrame() {
     }
   }
   semaphoreIndex = (semaphoreIndex + 1) % frames->presentCompleteSemaphore.size();
-  currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+  frames->currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+  currentFrame = frames->currentFrame;
 }
 
 void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
   std::vector<uint32_t> indices = getIndices();
   frames->commandBuffers[currentFrame].begin({});
   // Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
-  transition_image_layout(
+  img->transition_image_layout(
       swp->swapChainImages[imageIndex],
       vk::ImageLayout::eUndefined,
       vk::ImageLayout::eColorAttachmentOptimal,
@@ -143,7 +137,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
       vk::PipelineStageFlagBits2::eColorAttachmentOutput,
       vk::ImageAspectFlagBits::eColor // dstStage
   );
-  transition_image_layout(
+  img->transition_image_layout(
       *img->depthImage,
       vk::ImageLayout::eUndefined,
       vk::ImageLayout::eDepthAttachmentOptimal,
@@ -189,7 +183,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
   drawScreen();
   frames->commandBuffers[currentFrame].endRendering();
   // After rendering, transition the swapchain image to PRESENT_SRC
-  transition_image_layout(
+  img->transition_image_layout(
       swp->swapChainImages[imageIndex],
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageLayout::ePresentSrcKHR,
@@ -210,7 +204,10 @@ void VulkanEngine::keepTime() {
 void VulkanEngine::initVulkan() {
 
   cxt->createInstance();
+  std::cout << "instance created" << std::endl;
+
   cxt->setupDebugMessenger();
+  std::cout << "debug created" << std::endl;
   cxt->createSurface();
   std::cout << "Surface created" << std::endl;
   cxt->pickPhysicalDevice();
@@ -220,13 +217,15 @@ void VulkanEngine::initVulkan() {
   swp->createSwapChain();
   swp->createImageViews();
   dsc->createGlobalDescriptorSetLayout();
-  std::cout << "Created global descriptor set layout" << std::endl;
+  dsc->createMaterialDescriptorSetLayout();
+  std::cout << "Created escriptor set layouts" << std::endl;
   createPipelines();
   std::cout << "Pipeline created" << std::endl;
   frames->createCommandPool();
   std::cout << "Command pool created" << std::endl;
   img->createDepthResources();
-  std::printf("Creating vertex buffer...\n");
+  std::cout << "Making shapes..." << std::endl;
+  makeShapes();
   buf->createVertexBuffer();
   std::printf("Creating index buffer...\n");
   buf->createIndexBuffer();
@@ -235,11 +234,13 @@ void VulkanEngine::initVulkan() {
   std::printf("Creating descriptor pool...\n");
   dsc->createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
-  dsc->createDescriptorSets();
+  dsc->createGlobalDescriptorSets();
   std::printf("Creating command buffers...\n");
   frames->createCommandBuffers();
   std::printf("Creating sync objects...\n");
   frames->createSyncObjects();
+  std::cout << "Making materials..." << std::endl;
+  makeMaterials();
 }
 
 void VulkanEngine::cleanup() {
@@ -258,43 +259,12 @@ Window VulkanEngine::getWindow() {
   return *win;
 }
 
-void VulkanEngine::transition_image_layout(
-    vk::Image image,
-    vk::ImageLayout old_layout,
-    vk::ImageLayout new_layout,
-    vk::AccessFlags2 src_access_mask,
-    vk::AccessFlags2 dst_access_mask,
-    vk::PipelineStageFlags2 src_stage_mask,
-    vk::PipelineStageFlags2 dst_stage_mask,
-    vk::ImageAspectFlags image_aspect_flags) {
-  vk::ImageMemoryBarrier2 barrier = {
-      .srcStageMask = src_stage_mask,
-      .srcAccessMask = src_access_mask,
-      .dstStageMask = dst_stage_mask,
-      .dstAccessMask = dst_access_mask,
-      .oldLayout = old_layout,
-      .newLayout = new_layout,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .image = image,
-      .subresourceRange = {
-          .aspectMask = image_aspect_flags,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1}};
-  vk::DependencyInfo dependency_info = {
-      .dependencyFlags = {},
-      .imageMemoryBarrierCount = 1,
-      .pImageMemoryBarriers = &barrier};
-  frames->commandBuffers[currentFrame].pipelineBarrier2(dependency_info);
-}
-
 void VulkanEngine::drawScreen() {};
 void VulkanEngine::mouseMoved(float, float) {};
 void VulkanEngine::updateCameraTransforms(GlobalUBO &) {};
-void VulkanEngine::updateUBOData(MaterialUBO &) {};
 void VulkanEngine::processInput(GLFWwindow *) {};
 void VulkanEngine::createPipelines() {};
+void VulkanEngine::makeShapes() {};
+void VulkanEngine::makeMaterials() {};
 std::vector<Vertex> VulkanEngine::getVertices() { return {}; };
 std::vector<uint32_t> VulkanEngine::getIndices() { return {}; };

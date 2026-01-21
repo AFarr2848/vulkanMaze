@@ -3,7 +3,8 @@ project(VulkanTest LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(VulkanTest
   src/Buffers.cpp
@@ -17,6 +18,7 @@ add_executable(VulkanTest
   src/Window.cpp
   src/main.cpp
   src/Mesh.cpp
+  src/Material.cpp
 )
 
 find_package(Vulkan REQUIRED)

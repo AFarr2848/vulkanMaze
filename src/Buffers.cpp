@@ -1,10 +1,11 @@
-#include "vkMaze/Buffers.hpp"
-#include "vkMaze/VulkanContext.hpp"
-#include "vkMaze/Vertex.hpp"
-#include "vkMaze/VulkanEngine.hpp"
-#include "vkMaze/EngineConfig.hpp"
-#include "vkMaze/UBOs.hpp"
-#include "vkMaze/FrameData.hpp"
+#include "vkMaze/Components/Buffers.hpp"
+#include "vkMaze/Components/VulkanContext.hpp"
+#include "vkMaze/Components/VulkanEngine.hpp"
+#include "vkMaze/Components/FrameData.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Objects/UBOs.hpp"
+#include "vkMaze/Objects/Vertex.hpp"
+#include <iostream>
 
 void Buffers::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory) {
   vk::BufferCreateInfo bufferInfo{
@@ -12,7 +13,9 @@ void Buffers::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::
       .usage = usage,
       .sharingMode = vk::SharingMode::eExclusive};
 
+  std::cout << &buffer << std::endl;
   buffer = vk::raii::Buffer(ctx->device, bufferInfo);
+  std::cout << "stopt" << std::endl;
   vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
   vk::MemoryAllocateInfo allocInfo{
       .allocationSize = memRequirements.size,
@@ -87,6 +90,7 @@ void Buffers::createUniformBuffers() {
     globalUBOMapped.emplace_back(globalUBOMemory[i].mapMemory(0, bufferSize));
   }
 
+  /*
   materialUBOs.clear();
   materialUBOMemory.clear();
   materialUBOMapped.clear();
@@ -100,4 +104,5 @@ void Buffers::createUniformBuffers() {
     materialUBOMemory.emplace_back(std::move(bufferMem));
     materialUBOMapped.emplace_back(materialUBOMemory[i].mapMemory(0, bufferSize));
   }
+  */
 }

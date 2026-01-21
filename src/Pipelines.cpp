@@ -1,10 +1,10 @@
-#include "vkMaze/Pipelines.hpp"
-#include "vkMaze/Vertex.hpp"
-#include "vkMaze/VulkanContext.hpp"
+#include "vkMaze/Objects/Pipelines.hpp"
+#include "vkMaze/Objects/Vertex.hpp"
+#include "vkMaze/Components/Descriptors.hpp"
+#include "vkMaze/Components/Swapchain.hpp"
+#include "vkMaze/Components/Images.hpp"
+#include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Util.hpp"
-#include "vkMaze/Descriptors.hpp"
-#include "vkMaze/Swapchain.hpp"
-#include "vkMaze/Images.hpp"
 
 void Pipeline::createPipeline(const PipelineDsc &dsc) {
   vk::raii::ShaderModule shaderModule = createShaderModule(readFile(dsc.shaderPath));

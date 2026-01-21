@@ -1,6 +1,6 @@
-#include "vkMaze/Window.hpp"
-#include "vkMaze/EngineConfig.hpp"
-#include "vkMaze/VulkanEngine.hpp"
+#include "vkMaze/Components/Window.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Components/VulkanEngine.hpp"
 #include <GLFW/glfw3.h>
 
 void Window::init(VulkanEngine &e) {
