@@ -6,6 +6,23 @@ class Images;
 class FrameData;
 class Descriptors;
 
+class Texture {
+public:
+  vk::raii::Image image = nullptr;
+  vk::raii::DeviceMemory memory = nullptr;
+  vk::raii::ImageView view = nullptr;
+  vk::Format format;
+  uint32_t mipLevels;
+  vk::raii::Sampler sampler = nullptr;
+  vk::raii::DescriptorSet descriptorSet = nullptr;
+
+private:
+  VulkanContext *cxt;
+  Buffers *buf;
+  Images *img;
+  FrameData *frame;
+};
+
 class Material {
 
 public:
@@ -21,8 +38,8 @@ public:
     createTextures();
   }
 
-  Texture *albedo;
-  Texture *normal;
+  Texture albedo;
+  Texture normal;
 
 private:
   VulkanContext *cxt;
@@ -40,21 +57,4 @@ private:
   void copyBufferToImage(const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
   void createTextureImageView(Texture *tex);
   void createTextureSampler(Texture *tex);
-};
-
-class Texture {
-public:
-  vk::raii::Image image;
-  vk::raii::DeviceMemory memory;
-  vk::raii::ImageView view;
-  vk::Format format;
-  uint32_t mipLevels;
-  vk::raii::Sampler sampler;
-  vk::raii::DescriptorSet descriptorSet;
-
-private:
-  VulkanContext *cxt;
-  Buffers *buf;
-  Images *img;
-  FrameData *frame;
 };

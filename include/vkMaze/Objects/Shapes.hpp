@@ -12,7 +12,13 @@
 
 class Pipeline;
 class Material;
-class MeshRange;
+
+class MeshRange {
+public:
+  uint32_t vertexOffset;
+  uint32_t indexOffset;
+  uint32_t indexCount;
+};
 
 class Shape {
 public:
@@ -20,7 +26,7 @@ public:
   std::vector<uint32_t> indices = std::vector<uint32_t>();
   Pipeline *pipeline;
   Material *material;
-  MeshRange *range;
+  MeshRange range;
 };
 
 class Mesh : public Shape {
@@ -108,11 +114,4 @@ public:
       v.normal = glm::normalize(normalMatrix * v.normal);
     }
   };
-};
-
-class MeshRange {
-public:
-  uint32_t vertexOffset;
-  uint32_t indexOffset;
-  uint32_t indexCount;
 };

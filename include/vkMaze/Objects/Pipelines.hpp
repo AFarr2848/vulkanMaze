@@ -10,7 +10,7 @@ struct PipelineDsc {
   vk::PolygonMode polygonMode;
   vk::CullModeFlags cullModeFlags;
 
-  vk::DescriptorSetLayout descriptorSetLayout;
+  std::vector<vk::DescriptorSetLayout> setLayouts;
 };
 
 class Pipeline {

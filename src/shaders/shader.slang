@@ -2,6 +2,7 @@
 struct VSInput {
   float3 pos;
   float3 norm;
+  float2 uv;
 }
 
 struct UniformBuffer {
@@ -20,6 +21,7 @@ struct VertexOutput {
   float3 norm;
   float3 color;
   float3 cameraPos;
+  float2 uv;
 }
 
 struct PointLight {
@@ -29,9 +31,9 @@ struct PointLight {
 }
 
 static PointLight pointLight = PointLight(float3(1.5), float3(2.0, 2.0, 2.0), 1.0);
-static float ambientStrength = 0.1;
-static float diffuseStrength = 0.1;
-static float specularStrength = 0.5;
+static float ambientStrength = 0.3;
+static float diffuseStrength = 0.3;
+static float specularStrength = 0.8;
 
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
@@ -41,15 +43,18 @@ VertexOutput vertMain(VSInput input) {
   output.color = normalize(float3(-output.sv_position.z));
   output.norm = input.norm;
   output.cameraPos = ubo.cameraPos;
+  output.uv = input.uv;
   return output;
 }
+
+layout(set = 1, binding = 0) uniform Sampler2D albedo;
 
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
   float3 color = inVert.color;
   float3 phong = calculatePointLight(inVert, pointLight);
 
-  return float4(phong, 1.0);
+  return float4((albedo.Sample(inVert.uv).xyz * phong), 1.0);
 }
 
 float3 calculatePointLight(VertexOutput inVert, PointLight light) {
@@ -67,3 +72,4 @@ float3 calculatePointLight(VertexOutput inVert, PointLight light) {
 
   return (ambientLight + diffLight + specLight) * float3(0.1, 0.1, 0.1);
 }
+

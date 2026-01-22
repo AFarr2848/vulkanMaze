@@ -59,8 +59,8 @@ void Pipeline::createPipeline(const PipelineDsc &dsc) {
   vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = 1,
-      .pSetLayouts = &dsc.descriptorSetLayout,
+      .setLayoutCount = static_cast<uint32_t>(dsc.setLayouts.size()),
+      .pSetLayouts = dsc.setLayouts.data(),
       .pushConstantRangeCount = 0
 
   };

@@ -7,22 +7,26 @@
 
 #include "vulkan/vulkan.hpp"
 #include <iostream>
+#include <vulkan/vulkan_raii.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
 void Material::createTextures() {
+
   std::cout << "Making textures" << std::endl;
-  createTextureImage(albedo, albedoPath);
+  createTextureImage(&albedo, albedoPath);
   std::cout << "Texture Image made" << std::endl;
 
-  createTextureImageView(albedo);
+  createTextureImageView(&albedo);
   std::cout << "Texture ImageView made" << std::endl;
+  createTextureSampler(&albedo);
+  std::cout << "Texture sampler made" << std::endl;
 
-  createTextureImage(normal, normalPath);
-  createTextureImageView(normal);
+  createTextureImage(&normal, normalPath);
+  createTextureImageView(&normal);
 
-  albedo->descriptorSet = dsc->createMaterialDescriptorSet(albedo->view, albedo->sampler);
-  std::cout << "Dsc set: " << *albedo->descriptorSet << std::endl;
+  albedo.descriptorSet = dsc->createMaterialDescriptorSet(albedo.view, albedo.sampler);
+  std::cout << "Dsc set: " << *albedo.descriptorSet << std::endl;
 }
 void Material::createTextureSampler(Texture *tex) {
   vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
@@ -70,21 +74,15 @@ void Material::createTextureImage(Texture *tex, std::string path) {
 
   vk::raii::Buffer stagingBuffer = nullptr;
   vk::raii::DeviceMemory stagingBufferMemory = nullptr;
-  std::cout << "Creating buffer..." << imageSize << std::endl;
   buf->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
-  std::cout << "Created buffer" << std::endl;
 
   void *data = stagingBufferMemory.mapMemory(0, imageSize);
-  std::cout << "Created data" << std::endl;
   memcpy(data, pixels, imageSize);
-  std::cout << "memcpy" << std::endl;
   stagingBufferMemory.unmapMemory();
 
   stbi_image_free(pixels);
 
-  std::cout << "creating imgge" << std::endl;
   img->createImage(texWidth, texHeight, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, tex->image, tex->memory);
-  std::cout << "Created Image" << std::endl;
 
   transitionImageLayout(tex->image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
   copyBufferToImage(stagingBuffer, tex->image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));

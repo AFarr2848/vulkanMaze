@@ -36,15 +36,15 @@ public:
     shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
 
     // cube
-    shapes.push_back(Cube(glm::mat4(1.0f)));
-    shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
+    // shapes.push_back(Cube(glm::mat4(1.0f)));
+    // shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
 
     // backpack
     shapes.push_back(Mesh("models/Survival_BackPack_2.fbx", glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f))));
     shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
 
-    for (Shape s : shapes) {
-      makeOffset(s);
+    for (int i = 0; i < shapes.size(); i++) {
+      makeOffset(shapes.at(i));
     }
 
     // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
@@ -52,7 +52,7 @@ public:
 
   void makeMaterials() override {
     materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
-    materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
+    // materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
     materials.push_back(Material("textures/backpack_albedo.jpg", "", *cxt, *img, *frames, *dsc, *buf));
 
     for (int i = 0; i < shapes.size(); i++) {
@@ -63,11 +63,16 @@ public:
 private:
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
-  std::vector<MeshRange> offsets;
   std::vector<Shape> shapes;
   std::vector<Material> materials;
 
   void createPipelines() override {
+    std::vector dscSetLayouts = {
+        *dsc->descriptorSetLayout,
+        *dsc->matSetLayout
+
+    };
+
     pipelinePhong.init(*cxt, *dsc, *swp, *img);
     pipelinePhong.createPipeline({
 
@@ -75,7 +80,7 @@ private:
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eFill,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
-        .descriptorSetLayout = dsc->descriptorSetLayout
+        .setLayouts = dscSetLayouts
 
     });
     pipelineUnlit.init(*cxt, *dsc, *swp, *img);
@@ -85,7 +90,7 @@ private:
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eLine,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
-        .descriptorSetLayout = dsc->descriptorSetLayout
+        .setLayouts = dscSetLayouts
 
     });
   }
@@ -112,14 +117,11 @@ private:
 
   void drawScreen() override {
     for (Shape s : shapes) {
-
-      std::cout << s.pipeline << std::endl;
-      std::cout << *s.material->albedo->descriptorSet << std::endl;
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *s.material->albedo->descriptorSet, nullptr);
-
       frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-      frames->commandBuffers[currentFrame].drawIndexed(s.range->indexCount, 1, s.range->indexOffset, s.range->vertexOffset, 0);
+      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
+
+      frames->commandBuffers[currentFrame].drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);
     }
   }
 
@@ -153,11 +155,12 @@ private:
         .indexCount = static_cast<uint32_t>(s.indices.size()),
 
     };
+    std::cout << "Offset index count: " << offset.indexCount << std::endl;
 
-    offsets.push_back(offset);
     vertices.insert(vertices.end(), s.vertices.begin(), s.vertices.end());
     indices.insert(indices.end(), s.indices.begin(), s.indices.end());
-    s.range = &offsets.at(offsets.size() - 1);
+    s.range = offset;
+    std::cout << "shape range index count: " << s.range.indexCount << std::endl;
   }
 };
 

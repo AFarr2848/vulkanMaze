@@ -1,11 +1,12 @@
 #include "vkMaze/Objects/Shapes.hpp"
 #include <assimp/matrix4x4.h>
+#include <assimp/postprocess.h>
 #include <glm/fwd.hpp>
 #include <iostream>
 
 void Mesh::loadModel() {
   Assimp::Importer import;
-  const aiScene *scene = import.ReadFile(modelPath, aiProcess_Triangulate);
+  const aiScene *scene = import.ReadFile(modelPath, aiProcess_Triangulate | aiProcess_FlipUVs);
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
     std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
     return;
@@ -48,11 +49,14 @@ void Mesh::processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 trans
       vertex.normal = glm::mat3(transform) * normal;
     }
     if (mesh->mTextureCoords[0]) {
-      glm::vec2 vec;
+      glm::vec2 vec = {
+          mesh->mTextureCoords[0][i].x,
+          mesh->mTextureCoords[0][i].y
 
-      vec.x = mesh->mTextureCoords[0][i].x;
-      vec.y = mesh->mTextureCoords[0][i].y;
+      };
+
       vertex.uv = vec;
+
       /*
       // tangent
       vector.x = mesh->mTangents[i].x;

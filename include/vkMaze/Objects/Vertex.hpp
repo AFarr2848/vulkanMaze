@@ -6,5 +6,5 @@ struct Vertex {
   glm::vec2 uv;
 
   static vk::VertexInputBindingDescription getBindingDescription();
-  static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+  static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions();
 };

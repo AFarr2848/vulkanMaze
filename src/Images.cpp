@@ -1,6 +1,5 @@
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
-#include "vkMaze/Util.hpp"
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
 #include <iostream>
@@ -28,7 +27,18 @@ vk::Format Images::findDepthFormat() {
 
 void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory) {
   std::cout << "makin thing" << std::endl;
-  vk::ImageCreateInfo imageInfo{.imageType = vk::ImageType::e2D, .format = format, .extent = {width, height, 1}, .mipLevels = 1, .arrayLayers = 1, .samples = vk::SampleCountFlagBits::e1, .tiling = tiling, .usage = usage, .sharingMode = vk::SharingMode::eExclusive};
+  vk::ImageCreateInfo imageInfo{
+      .imageType = vk::ImageType::e2D,
+      .format = format,
+      .extent = {width, height, 1},
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = vk::SampleCountFlagBits::e1,
+      .tiling = tiling,
+      .usage = usage,
+      .sharingMode = vk::SharingMode::eExclusive
+
+  };
 
   std::cout << "GMAING" << std::endl;
   std::cout << *cxt->device << std::endl;
