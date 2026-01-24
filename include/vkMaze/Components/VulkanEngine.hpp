@@ -9,6 +9,7 @@ class Vertex;
 class GlobalUBO;
 class GLFWwindow;
 class Window;
+class SSBOLight;
 
 class VulkanEngine {
 public:
@@ -45,9 +46,11 @@ public:
   virtual void processInput(GLFWwindow *window);
   virtual void makeShapes();
   virtual void makeMaterials();
+  virtual void updateLights(std::vector<SSBOLight> &);
 
 protected:
   void updateGlobalUniformBuffer(uint32_t currentFrame);
+  void updateStorageBuffer(uint32_t currentImage);
 
   Window *win;
   VulkanContext *cxt;

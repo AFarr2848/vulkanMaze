@@ -7,7 +7,6 @@
 #include <iostream>
 void Descriptors::createGlobalDescriptorSets() {
   std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
-  std::printf("created layouts\n");
 
   vk::DescriptorSetAllocateInfo allocInfo{
       .descriptorPool = descriptorPool,
@@ -15,7 +14,6 @@ void Descriptors::createGlobalDescriptorSets() {
       .pSetLayouts = layouts.data()
 
   };
-  std::printf("allocInfo complete\n");
 
   descriptorSets.clear();
   descriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
@@ -26,7 +24,6 @@ void Descriptors::createGlobalDescriptorSets() {
         .range = sizeof(GlobalUBO)
 
     };
-    std::cout << "CamInfo complete" << std::endl;
 
     vk::WriteDescriptorSet camWrite{
         .dstSet = descriptorSets[i],
@@ -37,14 +34,69 @@ void Descriptors::createGlobalDescriptorSets() {
         .pBufferInfo = &camInfo
 
     };
-    std::cout << "CamWrite complete" << std::endl;
 
     std::vector<vk::WriteDescriptorSet> writes = {camWrite};
 
-    std::printf("updating descriptor sets\n");
     cxt->device.updateDescriptorSets(writes, {});
   }
 }
+
+void Descriptors::createObjDescriptorSets() {
+  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *objSetLayout);
+  vk::DescriptorSetAllocateInfo allocInfo{
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+      .pSetLayouts = layouts.data()
+
+  };
+  objDescriptorSets.clear();
+  objDescriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
+
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vk::DescriptorBufferInfo lightsInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = 0,
+        .range = sizeof(SSBOLight) * MAX_LIGHTS};
+
+    vk::WriteDescriptorSet lightsWrite{
+        .dstSet = objDescriptorSets.at(i),
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &lightsInfo};
+
+    vk::DescriptorBufferInfo lightInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = 0,
+        .range = sizeof(SSBOLight) * MAX_LIGHTS};
+
+    std::vector<vk::WriteDescriptorSet> writes = {lightsWrite};
+
+    cxt->device.updateDescriptorSets(writes, {});
+  }
+}
+
+void Descriptors::createObjectDescriptorSetLayout() {
+  vk::DescriptorSetLayoutBinding objLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+
+  std::vector<vk::DescriptorSetLayoutBinding> layouts = {objLayoutBinding};
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{
+      .flags = {},
+      .bindingCount = 1,
+      .pBindings = layouts.data()
+
+  };
+
+  objSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
+}
+
 void Descriptors::createGlobalDescriptorSetLayout() {
   vk::DescriptorSetLayoutBinding uboLayoutBinding{
       .binding = 0,
@@ -91,14 +143,22 @@ void Descriptors::createDescriptorPool() {
 
   vk::DescriptorPoolSize poolSizeMat{
       .type = vk::DescriptorType::eCombinedImageSampler,
-      .descriptorCount = 10};
+      .descriptorCount = 10
 
-  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeMat};
+  };
+
+  vk::DescriptorPoolSize poolSizeObj{
+      .type = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = MAX_FRAMES_IN_FLIGHT
+
+  };
+
+  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeMat, poolSizeObj};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = MAX_FRAMES_IN_FLIGHT + 10,
-      .poolSizeCount = 2,
+      .maxSets = MAX_FRAMES_IN_FLIGHT + MAX_FRAMES_IN_FLIGHT + 10,
+      .poolSizeCount = 3,
       .pPoolSizes = poolSizes.data()
 
   };

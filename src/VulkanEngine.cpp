@@ -70,6 +70,13 @@ void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
   memcpy(buf->globalUBOMapped[currentImage], &ubo, sizeof(ubo));
 }
 
+void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
+  std::vector<SSBOLight> lights;
+  updateLights(lights);
+
+  memcpy(buf->SSBOsMapped[currentImage], lights.data(), lights.size() * sizeof(SSBOLight));
+}
+
 void VulkanEngine::drawFrame() {
   while (vk::Result::eTimeout == cxt->device.waitForFences(*frames->inFlightFences[currentFrame], vk::True, UINT64_MAX))
     ;
@@ -87,6 +94,7 @@ void VulkanEngine::drawFrame() {
   frames->commandBuffers[currentFrame].reset();
   recordCommandBuffer(imageIndex);
   updateGlobalUniformBuffer(currentFrame);
+  updateStorageBuffer(currentFrame);
 
   vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
   const vk::SubmitInfo submitInfo{
@@ -148,7 +156,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
       vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, // dstAccessMask
       vk::ImageAspectFlagBits::eDepth                                                                   // dstStage
   );
-  vk::ClearValue clearColor = vk::ClearColorValue(0.2f, 0.3f, 0.3f, 1.0f);
+  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
   vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
   vk::RenderingAttachmentInfo attachmentInfo = {
       .imageView = swp->swapChainImageViews[imageIndex],
@@ -219,6 +227,7 @@ void VulkanEngine::initVulkan() {
   swp->createImageViews();
   dsc->createGlobalDescriptorSetLayout();
   dsc->createMaterialDescriptorSetLayout();
+  dsc->createObjectDescriptorSetLayout();
   std::cout << "Created escriptor set layouts" << std::endl;
   createPipelines();
   std::cout << "Pipeline created" << std::endl;
@@ -232,10 +241,12 @@ void VulkanEngine::initVulkan() {
   buf->createIndexBuffer();
   std::printf("Creating uniform buffers...\n");
   buf->createUniformBuffers();
+  buf->createStorageBuffer();
   std::printf("Creating descriptor pool...\n");
   dsc->createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
   dsc->createGlobalDescriptorSets();
+  dsc->createObjDescriptorSets();
   std::printf("Creating command buffers...\n");
   frames->createCommandBuffers();
   std::printf("Creating sync objects...\n");
@@ -263,6 +274,7 @@ Window VulkanEngine::getWindow() {
 void VulkanEngine::drawScreen() {};
 void VulkanEngine::mouseMoved(float, float) {};
 void VulkanEngine::updateCameraTransforms(GlobalUBO &) {};
+void VulkanEngine::updateLights(std::vector<SSBOLight> &) {};
 void VulkanEngine::processInput(GLFWwindow *) {};
 void VulkanEngine::createPipelines() {};
 void VulkanEngine::makeShapes() {};

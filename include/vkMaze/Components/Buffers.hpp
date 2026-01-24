@@ -22,16 +22,17 @@ public:
   std::vector<vk::raii::DeviceMemory> globalUBOMemory;
   std::vector<void *> globalUBOMapped;
 
-  std::vector<vk::raii::Buffer> materialUBOs;
-  std::vector<vk::raii::DeviceMemory> materialUBOMemory;
-  std::vector<void *> materialUBOMapped;
+  std::vector<vk::raii::Buffer> SSBOs;
+  std::vector<vk::raii::DeviceMemory> SSBOMemory;
+  std::vector<void *> SSBOsMapped;
 
   void createVertexBuffer();
   void createIndexBuffer();
+  void createUniformBuffers();
+  void createStorageBuffer();
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory);
   void copyBuffer(vk::raii::Buffer &srcBuffer, vk::raii::Buffer &dstBuffer, vk::DeviceSize size);
-  void createUniformBuffers();
 
 private:
   VulkanContext *ctx;

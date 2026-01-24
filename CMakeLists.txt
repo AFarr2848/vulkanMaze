@@ -68,6 +68,7 @@ file(MAKE_DIRECTORY ${SHADER_OUT_DIR})
 # List of .slang shaders
 set(SHADER_SOURCES
     ${SHADER_DIR}/shader.slang
+    ${SHADER_DIR}/unlit.slang
 )
 
 set(SHADER_BINARIES "")

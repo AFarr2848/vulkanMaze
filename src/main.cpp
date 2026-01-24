@@ -36,8 +36,8 @@ public:
     shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
 
     // cube
-    // shapes.push_back(Cube(glm::mat4(1.0f)));
-    // shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
+    shapes.push_back(Cube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)), glm::vec3(1.5f))));
+    shapes.at(shapes.size() - 1).pipeline = &pipelineUnlit;
 
     // backpack
     shapes.push_back(Mesh("models/Survival_BackPack_2.fbx", glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f))));
@@ -52,7 +52,7 @@ public:
 
   void makeMaterials() override {
     materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
-    // materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
+    materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
     materials.push_back(Material("textures/backpack_albedo.jpg", "", *cxt, *img, *frames, *dsc, *buf));
 
     for (int i = 0; i < shapes.size(); i++) {
@@ -69,7 +69,8 @@ private:
   void createPipelines() override {
     std::vector dscSetLayouts = {
         *dsc->descriptorSetLayout,
-        *dsc->matSetLayout
+        *dsc->matSetLayout,
+        *dsc->objSetLayout
 
     };
 
@@ -86,7 +87,7 @@ private:
     pipelineUnlit.init(*cxt, *dsc, *swp, *img);
     pipelineUnlit.createPipeline({
 
-        .shaderPath = "build/shaders/shader.spv",
+        .shaderPath = "build/shaders/unlit.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eLine,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
@@ -111,6 +112,19 @@ private:
     ubo.cameraPos = camera.Position;
   }
 
+  void updateLights(std::vector<SSBOLight> &lights) override {
+    lights.push_back(SSBOLight({
+
+        .pos = glm::vec3(sin(time), 1, cos(time)),
+        .color = glm::vec3(1.0f, 1.0f, 1.0f),
+        .type = POINTLIGHT,
+        .brightness = 0.5f
+
+    }));
+    static_assert(sizeof(SSBOLight) == 48, "Size must be 48");
+    static_assert(offsetof(SSBOLight, type) == 32, "Type must start at byte 32");
+  };
+
   std::vector<uint32_t> getIndices() override {
     return indices;
   }
@@ -119,6 +133,7 @@ private:
     for (Shape s : shapes) {
       frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
+      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->objDescriptorSets[currentFrame], nullptr);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
 
       frames->commandBuffers[currentFrame].drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);

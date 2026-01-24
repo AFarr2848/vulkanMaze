@@ -89,20 +89,19 @@ void Buffers::createUniformBuffers() {
     globalUBOMemory.emplace_back(std::move(bufferMem));
     globalUBOMapped.emplace_back(globalUBOMemory[i].mapMemory(0, bufferSize));
   }
+}
 
-  /*
-  materialUBOs.clear();
-  materialUBOMemory.clear();
-  materialUBOMapped.clear();
+void Buffers::createStorageBuffer() {
+  SSBOs.clear();
+  SSBOMemory.clear();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::DeviceSize bufferSize = sizeof(MaterialUBO);
+    vk::DeviceSize bufferSize = sizeof(SSBOLight) * MAX_LIGHTS;
     vk::raii::Buffer buffer({});
     vk::raii::DeviceMemory bufferMem({});
-    createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, buffer, bufferMem);
-    materialUBOs.emplace_back(std::move(buffer));
-    materialUBOMemory.emplace_back(std::move(bufferMem));
-    materialUBOMapped.emplace_back(materialUBOMemory[i].mapMemory(0, bufferSize));
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, buffer, bufferMem);
+    SSBOs.emplace_back(std::move(buffer));
+    SSBOMemory.emplace_back(std::move(bufferMem));
+    SSBOsMapped.emplace_back(SSBOMemory[i].mapMemory(0, bufferSize));
   }
-  */
 }
