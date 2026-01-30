@@ -12,9 +12,11 @@ public:
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
   vk::raii::DescriptorSetLayout matSetLayout = nullptr;
-  vk::raii::DescriptorSetLayout objSetLayout = nullptr;
+  vk::raii::DescriptorSetLayout lightSetLayout = nullptr;
+  vk::raii::DescriptorSetLayout transformSetLayout = nullptr;
   std::vector<vk::raii::DescriptorSet> descriptorSets;
-  std::vector<vk::raii::DescriptorSet> objDescriptorSets;
+  std::vector<vk::raii::DescriptorSet> lightDescriptorSets;
+  std::vector<vk::raii::DescriptorSet> transformDescriptorSets;
 
   void createGlobalDescriptorSets();
   void createGlobalDescriptorSetLayout();

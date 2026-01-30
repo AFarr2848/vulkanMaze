@@ -15,6 +15,8 @@ class VulkanEngine {
 public:
   float time;
   float deltaTime;
+  float timeSinceFPS = 0;
+  int frameCount = 0;
   uint32_t semaphoreIndex = 0;
 
   void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf) {

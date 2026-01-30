@@ -29,6 +29,9 @@ struct Light {
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
 
+[[vk::binding(0, 3)]]
+StructuredBuffer<float4x4> transforms;
+
 struct VertexOutput {
   float4 sv_position : SV_Position;
   float3 fragPos;
@@ -81,6 +84,5 @@ float3 calculatePointLight(VertexOutput inVert, Light light) {
   float3 specLight = specularStrength * spec * light.color;
 
   return (ambientLight + diffLight + specLight);
-  
 }
 

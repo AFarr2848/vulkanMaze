@@ -206,8 +206,17 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
 
 void VulkanEngine::keepTime() {
   float currentTime = static_cast<float>(glfwGetTime());
+  frameCount += 1;
   deltaTime = currentTime - time;
   time = currentTime;
+
+  timeSinceFPS += deltaTime;
+
+  if (timeSinceFPS >= 1) {
+    std::cout << "FPS: " << frameCount << std::endl;
+    timeSinceFPS = 0;
+    frameCount = 0;
+  }
 }
 
 void VulkanEngine::initVulkan() {

@@ -96,7 +96,7 @@ void Buffers::createStorageBuffer() {
   SSBOMemory.clear();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::DeviceSize bufferSize = sizeof(SSBOLight) * MAX_LIGHTS;
+    vk::DeviceSize bufferSize = sizeof(SSBOLight) * MAX_LIGHTS + sizeof(glm::mat4) * MAX_TRANSFORMS;
     vk::raii::Buffer buffer({});
     vk::raii::DeviceMemory bufferMem({});
     createBuffer(bufferSize, vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, buffer, bufferMem);

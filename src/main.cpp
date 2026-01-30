@@ -70,7 +70,8 @@ private:
     std::vector dscSetLayouts = {
         *dsc->descriptorSetLayout,
         *dsc->matSetLayout,
-        *dsc->objSetLayout
+        *dsc->lightSetLayout,
+        *dsc->transformSetLayout
 
     };
 
@@ -133,8 +134,9 @@ private:
     for (Shape s : shapes) {
       frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->objDescriptorSets[currentFrame], nullptr);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
+      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
+      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
 
       frames->commandBuffers[currentFrame].drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);
     }

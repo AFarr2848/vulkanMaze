@@ -42,15 +42,26 @@ void Descriptors::createGlobalDescriptorSets() {
 }
 
 void Descriptors::createObjDescriptorSets() {
-  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *objSetLayout);
-  vk::DescriptorSetAllocateInfo allocInfo{
+  std::vector<vk::DescriptorSetLayout> lightLayouts(MAX_FRAMES_IN_FLIGHT, *lightSetLayout);
+  std::vector<vk::DescriptorSetLayout> transformLayouts(MAX_FRAMES_IN_FLIGHT, *transformSetLayout);
+  vk::DescriptorSetAllocateInfo lightAllocInfo{
       .descriptorPool = descriptorPool,
-      .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-      .pSetLayouts = layouts.data()
+      .descriptorSetCount = static_cast<uint32_t>(lightLayouts.size()),
+      .pSetLayouts = lightLayouts.data()
 
   };
-  objDescriptorSets.clear();
-  objDescriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
+
+  vk::DescriptorSetAllocateInfo transformAllocInfo{
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = static_cast<uint32_t>(transformLayouts.size()),
+      .pSetLayouts = transformLayouts.data()
+
+  };
+
+  lightDescriptorSets.clear();
+  lightDescriptorSets = cxt->device.allocateDescriptorSets(lightAllocInfo);
+  transformDescriptorSets.clear();
+  transformDescriptorSets = cxt->device.allocateDescriptorSets(transformAllocInfo);
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vk::DescriptorBufferInfo lightsInfo{
@@ -59,42 +70,70 @@ void Descriptors::createObjDescriptorSets() {
         .range = sizeof(SSBOLight) * MAX_LIGHTS};
 
     vk::WriteDescriptorSet lightsWrite{
-        .dstSet = objDescriptorSets.at(i),
+        .dstSet = lightDescriptorSets.at(i),
         .dstBinding = 0,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = vk::DescriptorType::eStorageBuffer,
         .pBufferInfo = &lightsInfo};
 
-    vk::DescriptorBufferInfo lightInfo{
+    vk::DescriptorBufferInfo transformInfo{
         .buffer = buf->SSBOs.at(i),
         .offset = 0,
-        .range = sizeof(SSBOLight) * MAX_LIGHTS};
+        .range = sizeof(glm::mat4) * MAX_TRANSFORMS};
 
-    std::vector<vk::WriteDescriptorSet> writes = {lightsWrite};
+    vk::WriteDescriptorSet transformWrite{
+        .dstSet = transformDescriptorSets.at(i),
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &transformInfo
+
+    };
+
+    std::vector<vk::WriteDescriptorSet> writes = {lightsWrite, transformWrite};
 
     cxt->device.updateDescriptorSets(writes, {});
   }
 }
 
 void Descriptors::createObjectDescriptorSetLayout() {
-  vk::DescriptorSetLayoutBinding objLayoutBinding{
+  vk::DescriptorSetLayoutBinding lightLayoutBinding{
       .binding = 0,
       .descriptorType = vk::DescriptorType::eStorageBuffer,
       .descriptorCount = 1,
       .stageFlags = vk::ShaderStageFlagBits::eFragment,
-      .pImmutableSamplers = nullptr};
+      .pImmutableSamplers = nullptr
 
-  std::vector<vk::DescriptorSetLayoutBinding> layouts = {objLayoutBinding};
-
-  vk::DescriptorSetLayoutCreateInfo layoutInfo{
-      .flags = {},
-      .bindingCount = 1,
-      .pBindings = layouts.data()
+  };
+  vk::DescriptorSetLayoutBinding transformLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .pImmutableSamplers = nullptr
 
   };
 
-  objSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
+  std::vector<vk::DescriptorSetLayoutBinding> lightLayouts = {lightLayoutBinding};
+  std::vector<vk::DescriptorSetLayoutBinding> transformLayouts = {transformLayoutBinding};
+
+  vk::DescriptorSetLayoutCreateInfo lightLayoutInfo{
+      .flags = {},
+      .bindingCount = 1,
+      .pBindings = lightLayouts.data()
+
+  };
+  vk::DescriptorSetLayoutCreateInfo transformLayoutInfo{
+      .flags = {},
+      .bindingCount = 1,
+      .pBindings = transformLayouts.data()
+
+  };
+
+  lightSetLayout = vk::raii::DescriptorSetLayout(cxt->device, lightLayoutInfo);
+  transformSetLayout = vk::raii::DescriptorSetLayout(cxt->device, transformLayoutInfo);
 }
 
 void Descriptors::createGlobalDescriptorSetLayout() {
@@ -149,7 +188,7 @@ void Descriptors::createDescriptorPool() {
 
   vk::DescriptorPoolSize poolSizeObj{
       .type = vk::DescriptorType::eStorageBuffer,
-      .descriptorCount = MAX_FRAMES_IN_FLIGHT
+      .descriptorCount = MAX_FRAMES_IN_FLIGHT * 2
 
   };
 
@@ -157,7 +196,7 @@ void Descriptors::createDescriptorPool() {
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = MAX_FRAMES_IN_FLIGHT + MAX_FRAMES_IN_FLIGHT + 10,
+      .maxSets = MAX_FRAMES_IN_FLIGHT * 3 + 10,
       .poolSizeCount = 3,
       .pPoolSizes = poolSizes.data()
 
