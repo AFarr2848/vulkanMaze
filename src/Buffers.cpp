@@ -5,7 +5,6 @@
 #include "vkMaze/Components/EngineConfig.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Objects/Vertex.hpp"
-#include <iostream>
 
 void Buffers::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory) {
   vk::BufferCreateInfo bufferInfo{
@@ -13,9 +12,7 @@ void Buffers::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::
       .usage = usage,
       .sharingMode = vk::SharingMode::eExclusive};
 
-  std::cout << &buffer << std::endl;
   buffer = vk::raii::Buffer(ctx->device, bufferInfo);
-  std::cout << "stopt" << std::endl;
   vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
   vk::MemoryAllocateInfo allocInfo{
       .allocationSize = memRequirements.size,

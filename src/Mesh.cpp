@@ -1,6 +1,7 @@
 #include "vkMaze/Objects/Shapes.hpp"
 #include <assimp/matrix4x4.h>
 #include <assimp/postprocess.h>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/fwd.hpp>
 #include <iostream>
 
@@ -12,7 +13,7 @@ void Mesh::loadModel() {
     return;
   }
 
-  processNode(scene->mRootNode, scene, trans);
+  processNode(scene->mRootNode, scene, glm::mat4(1.0f));
 }
 
 void Mesh::processNode(aiNode *node, const aiScene *scene, glm::mat4 parentTransform) {
@@ -46,7 +47,7 @@ void Mesh::processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 trans
           mesh->mNormals[i].x,
           mesh->mNormals[i].y,
           mesh->mNormals[i].z);
-      vertex.normal = glm::mat3(transform) * normal;
+      vertex.normal = glm::normalize(glm::mat3(transform) * normal);
     }
     if (mesh->mTextureCoords[0]) {
       glm::vec2 vec = {
@@ -115,4 +116,29 @@ glm::mat4 Mesh::assimpToGlm(aiMatrix4x4 a) {
       glm::vec4(a.a3, a.b3, a.c3, a.d3),
       glm::vec4(a.a4, a.b4, a.c4, a.d4));
   return glm;
+}
+
+Shape &ShapeManager::get(const std::string &name) {
+  return shapes.at(name);
+}
+Shape &ShapeManager::add(const std::string &name, Shape s, glm::vec3 pos, glm::vec3 rotation, glm::vec3 scale, Pipeline &pipeline, Material &mat) {
+  s.pos = pos;
+  s.rotation = rotation;
+  s.scale = scale;
+  s.transformIndex = shapes.size();
+  s.pipeline = &pipeline;
+  s.material = &mat;
+  s.range = MeshRange({
+      .vertexOffset = static_cast<uint32_t>(vertices.size()),
+      .indexOffset = static_cast<uint32_t>(indices.size()),
+      .indexCount = static_cast<uint32_t>(s.indices.size()),
+  });
+
+  shapes.emplace(name, s);
+
+  transforms.push_back(glm::translate(glm::scale(glm::mat4(1.0f), s.scale), s.pos));
+  vertices.insert(vertices.end(), s.vertices.begin(), s.vertices.end());
+  indices.insert(indices.end(), s.indices.begin(), s.indices.end());
+
+  return shapes.at(name);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <glm/fwd.hpp>
 class VulkanContext;
 class Swapchain;
 class FrameData;
@@ -49,6 +50,7 @@ public:
   virtual void makeShapes();
   virtual void makeMaterials();
   virtual void updateLights(std::vector<SSBOLight> &);
+  virtual void updateTransforms(std::vector<glm::mat4> &);
 
 protected:
   void updateGlobalUniformBuffer(uint32_t currentFrame);

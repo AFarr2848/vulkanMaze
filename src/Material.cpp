@@ -6,27 +6,35 @@
 #include "vkMaze/Components/Descriptors.hpp"
 
 #include "vulkan/vulkan.hpp"
-#include <iostream>
 #include <vulkan/vulkan_raii.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
+Material &MaterialManager::get(const std::string &name) {
+  return materials.at(name);
+}
+
+Material &MaterialManager::create(const std::string &name, std::string albedo, std::string normal) {
+  materials.emplace(name, Material(albedo, normal));
+  return materials.at(name);
+}
+void MaterialManager::initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf) {
+  for (auto i = materials.begin(); i != materials.end(); i++) {
+    i->second.init(cxt, img, frame, dsc, buf);
+  }
+}
+
 void Material::createTextures() {
 
-  std::cout << "Making textures" << std::endl;
   createTextureImage(&albedo, albedoPath);
-  std::cout << "Texture Image made" << std::endl;
 
   createTextureImageView(&albedo);
-  std::cout << "Texture ImageView made" << std::endl;
   createTextureSampler(&albedo);
-  std::cout << "Texture sampler made" << std::endl;
 
   createTextureImage(&normal, normalPath);
   createTextureImageView(&normal);
 
   albedo.descriptorSet = dsc->createMaterialDescriptorSet(albedo.view, albedo.sampler);
-  std::cout << "Dsc set: " << *albedo.descriptorSet << std::endl;
 }
 void Material::createTextureSampler(Texture *tex) {
   vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
@@ -53,7 +61,6 @@ void Material::createTextureImage(Texture *tex, std::string path) {
   int texWidth, texHeight, texChannels;
   stbi_uc *pixels;
   if (!path.empty()) {
-    std::cout << "Loading....." << std::endl;
     pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
   } else {
@@ -62,7 +69,7 @@ void Material::createTextureImage(Texture *tex, std::string path) {
     texChannels = 1;
     pixels = new stbi_uc[4];
     pixels[0] = 255;
-    pixels[1] = 255;
+    pixels[1] = 0;
     pixels[2] = 255;
     pixels[3] = 255;
   }

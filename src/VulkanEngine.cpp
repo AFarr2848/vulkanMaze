@@ -1,4 +1,5 @@
 #define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
+#define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/VulkanEngine.hpp"
@@ -13,6 +14,7 @@
 #include "vkMaze/Objects/Vertex.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include <iostream>
+#include <glm/gtx/string_cast.hpp>
 
 vk::VertexInputBindingDescription Vertex::getBindingDescription() {
   return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
@@ -74,7 +76,19 @@ void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
   std::vector<SSBOLight> lights;
   updateLights(lights);
 
+  std::vector<glm::mat4> transforms;
+  updateTransforms(transforms);
+  assert(lights.size() <= MAX_LIGHTS);
+  assert(transforms.size() <= MAX_TRANSFORMS);
+  static_assert(sizeof(SSBOLight) * MAX_LIGHTS % 256 == 0,
+                "Lights buffer size should be aligned to 256 bytes");
+
+  for (int i = 0; i < transforms.size(); i++) {
+    std::cout << "Transform " << i << ": " << glm::to_string(transforms[i]) << std::endl;
+  }
+
   memcpy(buf->SSBOsMapped[currentImage], lights.data(), lights.size() * sizeof(SSBOLight));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_LIGHTS), transforms.data(), transforms.size() * sizeof(glm::mat4));
 }
 
 void VulkanEngine::drawFrame() {
@@ -284,6 +298,7 @@ void VulkanEngine::drawScreen() {};
 void VulkanEngine::mouseMoved(float, float) {};
 void VulkanEngine::updateCameraTransforms(GlobalUBO &) {};
 void VulkanEngine::updateLights(std::vector<SSBOLight> &) {};
+void VulkanEngine::updateTransforms(std::vector<glm::mat4> &) {};
 void VulkanEngine::processInput(GLFWwindow *) {};
 void VulkanEngine::createPipelines() {};
 void VulkanEngine::makeShapes() {};

@@ -5,6 +5,8 @@
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Util.hpp"
+#include "vkMaze/Objects/UBOs.hpp"
+#include "vulkan/vulkan.hpp"
 
 void Pipeline::createPipeline(const PipelineDsc &dsc) {
   vk::raii::ShaderModule shaderModule = createShaderModule(readFile(dsc.shaderPath));
@@ -58,10 +60,18 @@ void Pipeline::createPipeline(const PipelineDsc &dsc) {
       vk::DynamicState::eScissor};
   vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
 
+  vk::PushConstantRange pushConstantRange{
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .offset = 0,
+      .size = sizeof(PushConstant),
+
+  };
+
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
       .setLayoutCount = static_cast<uint32_t>(dsc.setLayouts.size()),
       .pSetLayouts = dsc.setLayouts.data(),
-      .pushConstantRangeCount = 0
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &pushConstantRange
 
   };
 

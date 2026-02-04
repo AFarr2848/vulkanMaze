@@ -4,7 +4,6 @@
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Components/Buffers.hpp"
 #include "vulkan/vulkan.hpp"
-#include <iostream>
 void Descriptors::createGlobalDescriptorSets() {
   std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
 
@@ -79,7 +78,7 @@ void Descriptors::createObjDescriptorSets() {
 
     vk::DescriptorBufferInfo transformInfo{
         .buffer = buf->SSBOs.at(i),
-        .offset = 0,
+        .offset = sizeof(SSBOLight) * MAX_LIGHTS,
         .range = sizeof(glm::mat4) * MAX_TRANSFORMS};
 
     vk::WriteDescriptorSet transformWrite{

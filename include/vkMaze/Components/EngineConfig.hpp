@@ -4,8 +4,8 @@
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-constexpr int MAX_LIGHTS = 100;
-constexpr int MAX_TRANSFORMS = 1000;
+constexpr int MAX_LIGHTS = 64;
+constexpr int MAX_TRANSFORMS = 1024;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;

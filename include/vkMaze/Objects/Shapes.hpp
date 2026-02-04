@@ -24,6 +24,12 @@ class Shape {
 public:
   std::vector<Vertex> vertices = std::vector<Vertex>();
   std::vector<uint32_t> indices = std::vector<uint32_t>();
+  uint32_t transformIndex;
+
+  glm::vec3 pos = glm::vec3(0.0f);
+  glm::vec3 rotation = glm::vec3(0.0f);
+  glm::vec3 scale = glm::vec3(1.0f);
+
   Pipeline *pipeline;
   Material *material;
   MeshRange range;
@@ -31,16 +37,13 @@ public:
 
 class Mesh : public Shape {
 public:
-  Mesh(std::string modelPath, glm::mat4 transform) {
+  Mesh(std::string modelPath) {
     this->modelPath = modelPath;
-    this->trans = transform;
-
     loadModel();
   }
 
 private:
   std::string modelPath;
-  glm::mat4 trans;
   void loadModel();
 
   void processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 parentTransform);
@@ -50,7 +53,7 @@ private:
 
 class Cube : public Shape {
 public:
-  Cube(glm::mat4 transform) {
+  Cube() {
     vertices = {
         // Front face (Z+)
         {{-0.5f, -0.5f, 0.5f}, {0, 0, 1}, {0, 0}},
@@ -104,6 +107,7 @@ public:
         20, 21, 22, 20, 22, 23
 
     };
+    /*
     for (Vertex &v : vertices) {
       glm::vec4 p = transform * glm::vec4(v.pos, 1.0);
       v.pos = p;
@@ -113,5 +117,22 @@ public:
     for (Vertex &v : vertices) {
       v.normal = glm::normalize(normalMatrix * v.normal);
     }
+    */
   };
+};
+
+class ShapeManager {
+public:
+  Shape &get(const std::string &name);
+  Shape &add(const std::string &name, Shape s, glm::vec3 pos, glm::vec3 rotation, glm::vec3 scale, Pipeline &pipeline, Material &mat);
+
+  size_t getSize() { return shapes.size(); }
+  std::unordered_map<std::string, Shape> &getShapes() { return shapes; }
+
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+  std::vector<glm::mat4> transforms;
+
+private:
+  std::unordered_map<std::string, Shape> shapes;
 };

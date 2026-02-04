@@ -27,44 +27,58 @@ Pipeline pipelineUnlit;
 Buffers buf;
 Images img;
 Descriptors dsc;
+MaterialManager materials;
 
 class VKMaze : public VulkanEngine {
 public:
   void makeShapes() override {
+    materials.create("default", "", "");
+    materials.create("backpack", "textures/backpack_albedo.jpg", "");
+
     // floor
-    shapes.push_back(Cube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 0.2f, 5.0f)), glm::vec3(0.0f, -8.0f, 0.0f))));
-    shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
+    shapes.add(
+        "floor",
+        Cube(),
+        glm::vec3(0.0f, -3.0f, 0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(5.0f, 0.5f, 5.0f),
+        *&pipelinePhong,
+        materials.get("default")
+
+    );
 
     // cube
-    shapes.push_back(Cube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)), glm::vec3(1.5f))));
-    shapes.at(shapes.size() - 1).pipeline = &pipelineUnlit;
+    shapes.add(
+        "cube",
+        Cube(),
+        glm::vec3(0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(1.0f),
+        *&pipelineUnlit,
+        materials.get("default")
 
-    // backpack
-    shapes.push_back(Mesh("models/Survival_BackPack_2.fbx", glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f))));
-    shapes.at(shapes.size() - 1).pipeline = &pipelinePhong;
+    );
 
-    for (int i = 0; i < shapes.size(); i++) {
-      makeOffset(shapes.at(i));
-    }
+    shapes.add(
+        "backpack",
+        Mesh("models/Survival_BackPack_2.fbx"),
+        glm::vec3(0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(0.005f),
+        *&pipelinePhong,
+        materials.get("backpack")
+
+    );
 
     // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
   }
 
   void makeMaterials() override {
-    materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
-    materials.push_back(Material("", "", *cxt, *img, *frames, *dsc, *buf));
-    materials.push_back(Material("textures/backpack_albedo.jpg", "", *cxt, *img, *frames, *dsc, *buf));
-
-    for (int i = 0; i < shapes.size(); i++) {
-      shapes.at(i).material = &materials.at(i);
-    }
+    materials.initMaterials(*cxt, *img, *frames, *dsc, *buf);
   }
 
 private:
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
-  std::vector<Shape> shapes;
-  std::vector<Material> materials;
+  ShapeManager shapes;
 
   void createPipelines() override {
     std::vector dscSetLayouts = {
@@ -98,8 +112,7 @@ private:
   }
 
   std::vector<Vertex> getVertices() override {
-    std::cout << "Vertices size: " << vertices.size() << std::endl;
-    return vertices;
+    return shapes.vertices;
   }
 
   void updateCameraTransforms(GlobalUBO &ubo) override {
@@ -126,13 +139,22 @@ private:
     static_assert(offsetof(SSBOLight, type) == 32, "Type must start at byte 32");
   };
 
+  void updateTransforms(std::vector<glm::mat4> &transforms) override {
+
+    transforms.insert(transforms.begin(), shapes.transforms.begin(), shapes.transforms.end());
+  };
+
   std::vector<uint32_t> getIndices() override {
-    return indices;
+    return shapes.indices;
   }
 
   void drawScreen() override {
-    for (Shape s : shapes) {
+    for (const auto &pair : shapes.getShapes()) {
+      const Shape &s = pair.second;
+      PushConstant pc = PushConstant({.transformIndex = s.transformIndex});
+
       frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
+      frames->commandBuffers[currentFrame].pushConstants(s.pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
       frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
@@ -161,23 +183,6 @@ private:
       camera.processKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
       camera.processKeyboard(DOWN, deltaTime);
-  }
-
-  void makeOffset(Shape &s) {
-
-    MeshRange offset{
-
-        .vertexOffset = static_cast<uint32_t>(vertices.size()),
-        .indexOffset = static_cast<uint32_t>(indices.size()),
-        .indexCount = static_cast<uint32_t>(s.indices.size()),
-
-    };
-    std::cout << "Offset index count: " << offset.indexCount << std::endl;
-
-    vertices.insert(vertices.end(), s.vertices.begin(), s.vertices.end());
-    indices.insert(indices.end(), s.indices.begin(), s.indices.end());
-    s.range = offset;
-    std::cout << "shape range index count: " << s.range.indexCount << std::endl;
   }
 };
 

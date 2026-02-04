@@ -2,8 +2,6 @@
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
-#include <iostream>
-#include <ostream>
 
 vk::raii::ImageView Images::createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags) {
   vk::ImageViewCreateInfo viewInfo{.image = image, .viewType = vk::ImageViewType::e2D, .format = format, .subresourceRange = {flags, 0, 1, 0, 1}};
@@ -26,7 +24,6 @@ vk::Format Images::findDepthFormat() {
 }
 
 void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory) {
-  std::cout << "makin thing" << std::endl;
   vk::ImageCreateInfo imageInfo{
       .imageType = vk::ImageType::e2D,
       .format = format,
@@ -40,18 +37,11 @@ void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk:
 
   };
 
-  std::cout << "GMAING" << std::endl;
-  std::cout << *cxt->device << std::endl;
-  if (!*cxt->device) {
-    std::cerr << "ctx->device is invalid!" << std::endl;
-  }
   image = vk::raii::Image(cxt->device, imageInfo);
 
   vk::MemoryRequirements memRequirements = image.getMemoryRequirements();
-  std::cout << "Ghaha whug" << std::endl;
   vk::MemoryAllocateInfo allocInfo{.allocationSize = memRequirements.size,
                                    .memoryTypeIndex = cxt->findMemoryType(memRequirements.memoryTypeBits, properties)};
-  std::cout << "cringt whug" << std::endl;
   imageMemory = vk::raii::DeviceMemory(cxt->device, allocInfo);
   image.bindMemory(imageMemory, 0);
 }

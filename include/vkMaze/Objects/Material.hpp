@@ -1,4 +1,5 @@
-#include <vulkan/vulkan_raii.hpp>
+#include <iostream>
+#include <unordered_map>
 class VulkanContext;
 class Buffers;
 class Texture;
@@ -26,15 +27,20 @@ private:
 class Material {
 
 public:
-  Material(std::string albedo, std::string normal, VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf) {
+  Material(std::string albedo, std::string normal) {
+    this->albedoPath = albedo;
+    this->normalPath = normal;
+  }
+  Material() {
+    this->albedoPath = "";
+    this->normalPath = "";
+  }
+  void init(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf) {
     this->cxt = &cxt;
     this->img = &img;
     this->frame = &frame;
     this->dsc = &dsc;
-    this->albedoPath = albedo;
-    this->normalPath = normal;
     this->buf = &buf;
-
     createTextures();
   }
 
@@ -57,4 +63,16 @@ private:
   void copyBufferToImage(const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
   void createTextureImageView(Texture *tex);
   void createTextureSampler(Texture *tex);
+};
+
+class MaterialManager {
+public:
+  Material &get(const std::string &name);
+  Material &create(const std::string &name,
+                   std::string albedo,
+                   std::string normal);
+  void initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf);
+
+private:
+  std::unordered_map<std::string, Material> materials;
 };

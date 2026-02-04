@@ -22,3 +22,7 @@ struct SSBOLight {
   float brightness;
   glm::vec2 _pad2 = glm::vec2(0.0f);
 };
+
+struct PushConstant {
+  uint32_t transformIndex;
+};

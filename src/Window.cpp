@@ -4,10 +4,7 @@
 #include <GLFW/glfw3.h>
 
 void Window::init(VulkanEngine &e) {
-  std::cout << "this: " << this << std::endl;
-  std::cout << "&engine member: " << &engine << std::endl;
   engine = &e;
-  std::cout << "assigned engine" << std::endl;
 }
 void Window::initWindow() {
   glfwInit();
