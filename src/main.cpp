@@ -24,6 +24,7 @@ Swapchain swp;
 FrameData frames;
 Pipeline pipelinePhong;
 Pipeline pipelineUnlit;
+Pipeline pipelineWireframe;
 Buffers buf;
 Images img;
 Descriptors dsc;
@@ -34,6 +35,7 @@ public:
   void makeShapes() override {
     materials.create("default", "", "");
     materials.create("backpack", "textures/backpack_albedo.jpg", "");
+    materials.create("earth", "textures/earth.png", "");
 
     // floor
     shapes.add(
@@ -42,7 +44,7 @@ public:
         glm::vec3(0.0f, -3.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(5.0f, 0.5f, 5.0f),
-        *&pipelinePhong,
+        *&pipelineWireframe,
         materials.get("default")
 
     );
@@ -54,7 +56,7 @@ public:
         glm::vec3(0.0f),
         glm::vec3(0.0f),
         glm::vec3(1.0f),
-        *&pipelineUnlit,
+        *&pipelineWireframe,
         materials.get("default")
 
     );
@@ -67,6 +69,28 @@ public:
         glm::vec3(0.005f),
         *&pipelinePhong,
         materials.get("backpack")
+
+    );
+
+    shapes.add(
+        "ico",
+        Icosphere(3),
+        glm::vec3(0.0f, 5.0f, 0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(1.0f),
+        *&pipelinePhong,
+        materials.get("earth")
+
+    );
+
+    shapes.add(
+        "light_sphere",
+        Icosphere(3),
+        glm::vec3(0.0f, 5.0f, 0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(0.2f),
+        *&pipelineUnlit,
+        materials.get("default")
 
     );
 
@@ -104,6 +128,16 @@ private:
 
         .shaderPath = "build/shaders/unlit.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eBack,
+        .setLayouts = dscSetLayouts
+
+    });
+    pipelineWireframe.init(*cxt, *dsc, *swp, *img);
+    pipelineWireframe.createPipeline({
+
+        .shaderPath = "build/shaders/unlit.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eLine,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
         .setLayouts = dscSetLayouts
@@ -129,7 +163,7 @@ private:
   void updateLights(std::vector<SSBOLight> &lights) override {
     lights.push_back(SSBOLight({
 
-        .pos = glm::vec3(sin(time), 1, cos(time)),
+        .pos = shapes.get("light_sphere").pos,
         .color = glm::vec3(1.0f, 1.0f, 1.0f),
         .type = POINTLIGHT,
         .brightness = 0.5f
@@ -140,6 +174,8 @@ private:
   };
 
   void updateTransforms(std::vector<glm::mat4> &transforms) override {
+    shapes.get("light_sphere").pos = {6 * sin(time), 8, 6 * cos(time)};
+    shapes.updateTransform("light_sphere");
 
     transforms.insert(transforms.begin(), shapes.transforms.begin(), shapes.transforms.end());
   };

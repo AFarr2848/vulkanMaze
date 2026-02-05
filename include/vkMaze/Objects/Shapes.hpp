@@ -3,6 +3,8 @@
 #include <glm/detail/qualifier.hpp>
 #include <glm/common.hpp>
 #include <glm/fwd.hpp>
+#include <numbers>
+#include <sys/types.h>
 #include <vector>
 #include <vkMaze/Objects/Vertex.hpp>
 #include <glm/glm.hpp>
@@ -49,6 +51,66 @@ private:
   void processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 parentTransform);
   void processNode(aiNode *node, const aiScene *scene, glm::mat4 transform);
   glm::mat4 assimpToGlm(aiMatrix4x4 a);
+};
+
+class Icosphere : public Shape {
+public:
+  Icosphere(int divisions) {
+    float phi = std::numbers::phi;
+    float a = 1.0f;
+    float b = 1.0f / phi;
+    vertices = {
+        {{0, b, -a}, {0, 0, 0}, {0, 0}},
+        {{b, a, 0}, {0, 0, 0}, {0, 0}},
+        {{-b, a, 0}, {0, 0, 0}, {0, 0}},
+        {{0, b, a}, {0, 0, 0}, {0, 0}},
+        {{0, -b, a}, {0, 0, 0}, {0, 0}},
+        {{-a, 0, b}, {0, 0, 0}, {0, 0}},
+        {{0, -b, -a}, {0, 0, 0}, {0, 0}},
+        {{a, 0, -b}, {0, 0, 0}, {0, 0}},
+        {{a, 0, b}, {0, 0, 0}, {0, 0}},
+        {{-a, 0, -b}, {0, 0, 0}, {0, 0}},
+        {{b, -a, 0}, {0, 0, 0}, {0, 0}},
+        {{-b, -a, 0}, {0, 0, 0}, {0, 0}},
+
+    };
+
+    indices = {
+        // Top cap
+        0, 2, 1,
+        0, 9, 2,
+        0, 6, 9,
+        0, 7, 6,
+        0, 1, 7,
+
+        // Upper middle band
+        1, 8, 7,
+        1, 3, 8,
+        1, 2, 3,
+        2, 5, 3,
+        2, 9, 5,
+
+        // Lower middle band
+        9, 11, 5,
+        9, 6, 11,
+        6, 10, 11,
+        6, 7, 10,
+        7, 8, 10,
+
+        // Bottom cap
+        3, 4, 8,
+        3, 5, 4,
+        5, 11, 4,
+        11, 10, 4,
+        10, 8, 4};
+
+    subdivide(divisions);
+    makeNormals();
+    makeTexCoords();
+  }
+  void subdivide(int);
+  void makeNormals();
+  void makeTexCoords();
 };
 
 class Cube : public Shape {
@@ -128,6 +190,7 @@ public:
 
   size_t getSize() { return shapes.size(); }
   std::unordered_map<std::string, Shape> &getShapes() { return shapes; }
+  void updateTransform(const std::string &name);
 
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -136,3 +199,26 @@ public:
 private:
   std::unordered_map<std::string, Shape> shapes;
 };
+
+class EdgePair {
+public:
+  uint32_t i1;
+  uint32_t i2;
+
+  bool operator==(const EdgePair &other) const {
+    return (i1 == other.i1 && i2 == other.i2) || (i1 == other.i2 && i2 == other.i1);
+  }
+};
+
+// Specialize std::hash for EdgePair
+namespace std {
+template <>
+struct hash<EdgePair> {
+  size_t operator()(const EdgePair &ep) const {
+    // Combine the two hash values
+    size_t h1 = hash<uint32_t>{}(ep.i1);
+    size_t h2 = hash<uint32_t>{}(ep.i2);
+    return h1 ^ (h2 << 1); // Simple hash combination
+  }
+};
+} // namespace std

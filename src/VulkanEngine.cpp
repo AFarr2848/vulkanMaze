@@ -83,10 +83,6 @@ void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
   static_assert(sizeof(SSBOLight) * MAX_LIGHTS % 256 == 0,
                 "Lights buffer size should be aligned to 256 bytes");
 
-  for (int i = 0; i < transforms.size(); i++) {
-    std::cout << "Transform " << i << ": " << glm::to_string(transforms[i]) << std::endl;
-  }
-
   memcpy(buf->SSBOsMapped[currentImage], lights.data(), lights.size() * sizeof(SSBOLight));
   memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_LIGHTS), transforms.data(), transforms.size() * sizeof(glm::mat4));
 }

@@ -1,9 +1,11 @@
 #include "vkMaze/Objects/Shapes.hpp"
+#include "vkMaze/Util.hpp"
 #include <assimp/matrix4x4.h>
 #include <assimp/postprocess.h>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/fwd.hpp>
 #include <iostream>
+#include <sys/types.h>
 
 void Mesh::loadModel() {
   Assimp::Importer import;
@@ -141,4 +143,9 @@ Shape &ShapeManager::add(const std::string &name, Shape s, glm::vec3 pos, glm::v
   indices.insert(indices.end(), s.indices.begin(), s.indices.end());
 
   return shapes.at(name);
+}
+
+void ShapeManager::updateTransform(const std::string &name) {
+  Shape s = get(name);
+  transforms[s.transformIndex] = glm::scale(glm::translate(glm::mat4(1.0f), s.pos), s.scale);
 }

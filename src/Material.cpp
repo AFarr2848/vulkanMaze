@@ -69,7 +69,7 @@ void Material::createTextureImage(Texture *tex, std::string path) {
     texChannels = 1;
     pixels = new stbi_uc[4];
     pixels[0] = 255;
-    pixels[1] = 0;
+    pixels[1] = 255;
     pixels[2] = 255;
     pixels[3] = 255;
   }
