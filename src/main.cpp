@@ -15,6 +15,7 @@
 #include <vkMaze/Objects/UBOs.hpp>
 #include <vkMaze/Components/FrameData.hpp>
 #include <GLFW/glfw3.h>
+#include <vulkan/vulkan_raii.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -22,9 +23,6 @@ Window win;
 VulkanContext cxt;
 Swapchain swp;
 FrameData frames;
-Pipeline pipelinePhong;
-Pipeline pipelineUnlit;
-Pipeline pipelineWireframe;
 Buffers buf;
 Images img;
 Descriptors dsc;
@@ -36,6 +34,8 @@ public:
     materials.create("default", "", "");
     materials.create("backpack", "textures/backpack_albedo.jpg", "");
     materials.create("earth", "textures/earth.png", "");
+    materials.color("black", glm::vec3(0));
+    materials.color("purple", glm::vec3(100, 20, 100));
 
     // floor
     shapes.add(
@@ -43,8 +43,8 @@ public:
         Cube(),
         glm::vec3(0.0f, -3.0f, 0.0f),
         glm::vec3(0.0f),
-        glm::vec3(5.0f, 0.5f, 5.0f),
-        *&pipelineWireframe,
+        glm::vec3(300.0f, 0.5f, 300.0f),
+        *&pipelinePhong,
         materials.get("default")
 
     );
@@ -103,6 +103,10 @@ public:
 
 private:
   ShapeManager shapes;
+  Pipeline pipelinePhong;
+  Pipeline pipelineUnlit;
+  Pipeline pipelineWireframe;
+  std::vector<Pipeline *> pipelines = {&pipelinePhong, &pipelineUnlit, &pipelineWireframe};
 
   void createPipelines() override {
     std::vector dscSetLayouts = {
@@ -185,19 +189,46 @@ private:
   }
 
   void drawScreen() override {
-    for (const auto &pair : shapes.getShapes()) {
+    vk::raii::CommandBuffer &buf = frames->commandBuffers[currentFrame];
+    std::vector<Shape *> drawShapes = shapes.getDrawOrder();
+    Material *currentMaterial = nullptr;
+    Pipeline *currentPipeline = nullptr;
+
+    for (Shape *s : drawShapes) {
+      PushConstant pc = PushConstant({.transformIndex = s->transformIndex});
+      buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
+      if (s->pipeline != currentPipeline) {
+        buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);
+        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
+        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
+        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
+        currentPipeline = s->pipeline;
+      }
+      if (s->material != currentMaterial) {
+        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
+        currentMaterial = s->material;
+      }
+      buf.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
+    }
+
+    /*
+            for (const auto &pair : shapes.getShapes()) {
+      vk::raii::CommandBuffer &buf = frames->commandBuffers[currentFrame];
+
       const Shape &s = pair.second;
       PushConstant pc = PushConstant({.transformIndex = s.transformIndex});
 
-      frames->commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
-      frames->commandBuffers[currentFrame].pushConstants(s.pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
-      frames->commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
+      buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
+      buf.pushConstants(s.pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
+      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
+      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
+      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
+      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
 
-      frames->commandBuffers[currentFrame].drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);
+      buf.drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);
     }
+
+    */
   }
 
   void mouseMoved(float xoffset, float yoffset) override {

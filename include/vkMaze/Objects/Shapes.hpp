@@ -5,6 +5,7 @@
 #include <glm/fwd.hpp>
 #include <numbers>
 #include <sys/types.h>
+#include <unordered_map>
 #include <vector>
 #include <vkMaze/Objects/Vertex.hpp>
 #include <glm/glm.hpp>
@@ -191,6 +192,7 @@ public:
   size_t getSize() { return shapes.size(); }
   std::unordered_map<std::string, Shape> &getShapes() { return shapes; }
   void updateTransform(const std::string &name);
+  std::vector<Shape *> getDrawOrder();
 
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;

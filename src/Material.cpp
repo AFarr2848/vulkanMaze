@@ -6,6 +6,7 @@
 #include "vkMaze/Components/Descriptors.hpp"
 
 #include "vulkan/vulkan.hpp"
+#include <glm/glm.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
@@ -24,14 +25,19 @@ void MaterialManager::initMaterials(VulkanContext &cxt, Images &img, FrameData &
   }
 }
 
-void Material::createTextures() {
+Material &MaterialManager::color(const std::string &name, glm::vec3 color) {
+  materials.try_emplace(name, Material(color));
+  return materials.at(name);
+}
 
-  createTextureImage(&albedo, albedoPath);
+void Material::createTextures(glm::vec3 defaultColor = glm::vec3(255)) {
+
+  createTextureImage(&albedo, albedoPath, defaultColor);
 
   createTextureImageView(&albedo);
   createTextureSampler(&albedo);
 
-  createTextureImage(&normal, normalPath);
+  createTextureImage(&normal, normalPath, defaultColor);
   createTextureImageView(&normal);
 
   albedo.descriptorSet = dsc->createMaterialDescriptorSet(albedo.view, albedo.sampler);
@@ -57,7 +63,7 @@ void Material::createTextureImageView(Texture *tex) {
   tex->view = img->createImageView(tex->image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 }
 
-void Material::createTextureImage(Texture *tex, std::string path) {
+void Material::createTextureImage(Texture *tex, std::string path, glm::vec3 defaultColor = glm::vec3(255)) {
   int texWidth, texHeight, texChannels;
   stbi_uc *pixels;
   if (!path.empty()) {
@@ -68,9 +74,9 @@ void Material::createTextureImage(Texture *tex, std::string path) {
     texHeight = 1;
     texChannels = 1;
     pixels = new stbi_uc[4];
-    pixels[0] = 255;
-    pixels[1] = 255;
-    pixels[2] = 255;
+    pixels[0] = defaultColor.r;
+    pixels[1] = defaultColor.g;
+    pixels[2] = defaultColor.b;
     pixels[3] = 255;
   }
 

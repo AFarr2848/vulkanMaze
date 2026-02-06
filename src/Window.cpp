@@ -17,6 +17,10 @@ void Window::initWindow() {
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
   glfwSetCursorPosCallback(window, GLFWMouseCallback);
+
+  if (!glfwVulkanSupported()) {
+    std::cerr << "Vulkan not supported!\n";
+  }
 }
 
 void Window::framebufferResizeCallback(GLFWwindow *window, int width, int height) {

@@ -1,11 +1,14 @@
 #include "vkMaze/Objects/Shapes.hpp"
 #include "vkMaze/Util.hpp"
+#include "vulkan/vulkan.hpp"
 #include <assimp/matrix4x4.h>
 #include <assimp/postprocess.h>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/fwd.hpp>
 #include <iostream>
+#include <ranges>
 #include <sys/types.h>
+#include <unordered_map>
 
 void Mesh::loadModel() {
   Assimp::Importer import;
@@ -148,4 +151,20 @@ Shape &ShapeManager::add(const std::string &name, Shape s, glm::vec3 pos, glm::v
 void ShapeManager::updateTransform(const std::string &name) {
   Shape s = get(name);
   transforms[s.transformIndex] = glm::scale(glm::translate(glm::mat4(1.0f), s.pos), s.scale);
+}
+
+std::vector<Shape *> ShapeManager::getDrawOrder() {
+  std::vector<Shape *> drawList;
+  drawList.reserve(shapes.size());
+
+  for (auto &[name, shape] : shapes)
+    drawList.push_back(&shape);
+
+  std::sort(drawList.begin(), drawList.end(),
+            [](const Shape *a, const Shape *b) {
+              if (a->pipeline != b->pipeline)
+                return a->pipeline < b->pipeline;
+              return a->material < b->material;
+            });
+  return drawList;
 }

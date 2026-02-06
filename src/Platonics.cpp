@@ -10,7 +10,6 @@ void Icosphere::subdivide(int divisions) {
     uint32_t size = indices.size();
 
     for (int j = 0; j < size; j += 3) {
-      std::cout << j << std::endl;
       uint32_t i1 = indices[j];
       uint32_t i2 = indices[j + 1];
       uint32_t i3 = indices[j + 2];

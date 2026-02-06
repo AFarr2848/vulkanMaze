@@ -1,5 +1,6 @@
 #include <iostream>
 #include <unordered_map>
+#include <glm/glm.hpp>
 class VulkanContext;
 class Buffers;
 class Texture;
@@ -27,13 +28,15 @@ private:
 class Material {
 
 public:
-  Material(std::string albedo, std::string normal) {
+  Material(std::string albedo, std::string normal, glm::vec3 defaultColor = glm::vec3(255)) {
     this->albedoPath = albedo;
     this->normalPath = normal;
+    this->color = defaultColor;
   }
-  Material() {
+  Material(glm::vec3 defaultColor = glm::vec3(255)) {
     this->albedoPath = "";
     this->normalPath = "";
+    this->color = defaultColor;
   }
   void init(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf) {
     this->cxt = &cxt;
@@ -41,7 +44,7 @@ public:
     this->frame = &frame;
     this->dsc = &dsc;
     this->buf = &buf;
-    createTextures();
+    createTextures(color);
   }
 
   Texture albedo;
@@ -56,9 +59,10 @@ private:
 
   std::string albedoPath;
   std::string normalPath;
+  glm::vec3 color;
 
-  void createTextures();
-  void createTextureImage(Texture *tex, std::string path);
+  void createTextures(glm::vec3 defaultColor);
+  void createTextureImage(Texture *tex, std::string path, glm::vec3 defaultColor);
   void transitionImageLayout(const vk::raii::Image &image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
   void copyBufferToImage(const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
   void createTextureImageView(Texture *tex);
@@ -71,6 +75,8 @@ public:
   Material &create(const std::string &name,
                    std::string albedo,
                    std::string normal);
+
+  Material &color(const std::string &, glm::vec3);
   void initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf);
 
 private:
