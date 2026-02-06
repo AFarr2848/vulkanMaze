@@ -169,6 +169,9 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL VulkanContext::debugCallback(vk::DebugUtilsMess
 
 void VulkanContext::createSurface() {
   VkSurfaceKHR _surface;
+  if (glfwCreateWindowSurface(*instance, win->window, nullptr, &_surface) != 0) {
+    throw std::runtime_error("failed to create window surface!");
+  }
   surface = vk::raii::SurfaceKHR(instance, _surface);
 }
 
