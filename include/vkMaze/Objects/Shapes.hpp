@@ -184,24 +184,6 @@ public:
   };
 };
 
-class ShapeManager {
-public:
-  Shape &get(const std::string &name);
-  Shape &add(const std::string &name, Shape s, glm::vec3 pos, glm::vec3 rotation, glm::vec3 scale, Pipeline &pipeline, Material &mat);
-
-  size_t getSize() { return shapes.size(); }
-  std::unordered_map<std::string, Shape> &getShapes() { return shapes; }
-  void updateTransform(const std::string &name);
-  std::vector<Shape *> getDrawOrder();
-
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
-  std::vector<glm::mat4> transforms;
-
-private:
-  std::unordered_map<std::string, Shape> shapes;
-};
-
 class EdgePair {
 public:
   uint32_t i1;

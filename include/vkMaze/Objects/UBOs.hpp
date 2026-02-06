@@ -25,4 +25,5 @@ struct SSBOLight {
 
 struct PushConstant {
   uint32_t transformIndex;
+  uint32_t numLights;
 };

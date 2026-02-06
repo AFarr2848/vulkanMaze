@@ -14,6 +14,7 @@ struct VSInput {
 
 struct PushConstant {
   int32_t transformIndex;
+  int32_t numLights;
 }
 
 struct UniformBuffer {
@@ -46,11 +47,15 @@ struct VertexOutput {
   float3 color;
   float3 cameraPos;
   float2 uv;
+  float numLights;
 }
 
-static float ambientStrength = 0.05;
-static float diffuseStrength = 0.08;
-static float specularStrength = 0.1;
+static float ambientStrength = 0.1;
+static float diffuseStrength = 1;
+static float specularStrength = 0.5;
+static float attConstant = 1.0;
+static float attLinear = 0.09;
+static float attQuadratic = 0.032;
 
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
@@ -61,6 +66,7 @@ VertexOutput vertMain(VSInput input) {
   output.norm = input.norm;
   output.cameraPos = ubo.cameraPos;
   output.uv = input.uv;
+  output.numLights = push.numLights;
   return output;
 }
 
@@ -72,13 +78,19 @@ StructuredBuffer<Light> lights;
 
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
-  float3 phong = calculatePointLight(inVert, lights[0]);
+  float3 phong = 0;
+  for (int i = 0; i < inVert.numLights; i++) {
+    phong += calculatePointLight(inVert, lights[i]);
+  }
   // return float4(float3(phong), 1.0);
   return float4(albedo.Sample(inVert.uv).xyz * phong, 1.0);
   // return float4(inVert.norm / 2 + 0.5, 1.0);
 }
 
 float3 calculatePointLight(VertexOutput inVert, Light light) {
+  float dist = distance(inVert.fragPos, light.pos);
+  float attenuation = 1.0 / (attConstant + attLinear * dist + attQuadratic * (dist * dist));
+
   float3 lightDir = normalize(light.pos - inVert.fragPos);
   float3 norm = normalize(inVert.norm);
 
@@ -91,6 +103,10 @@ float3 calculatePointLight(VertexOutput inVert, Light light) {
   float3 reflectDir = reflect(-lightDir, norm);
   float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
   float3 specLight = specularStrength * spec * light.color;
+
+  ambientLight *= attenuation;
+  diffLight *= attenuation;
+  specLight *= attenuation;
 
   return (ambientLight + diffLight + specLight);
 }

@@ -11,25 +11,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
-Material &MaterialManager::get(const std::string &name) {
-  return materials.at(name);
-}
-
-Material &MaterialManager::create(const std::string &name, std::string albedo, std::string normal) {
-  materials.emplace(name, Material(albedo, normal));
-  return materials.at(name);
-}
-void MaterialManager::initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf) {
-  for (auto i = materials.begin(); i != materials.end(); i++) {
-    i->second.init(cxt, img, frame, dsc, buf);
-  }
-}
-
-Material &MaterialManager::color(const std::string &name, glm::vec3 color) {
-  materials.try_emplace(name, Material(color));
-  return materials.at(name);
-}
-
 void Material::createTextures(glm::vec3 defaultColor = glm::vec3(255)) {
 
   createTextureImage(&albedo, albedoPath, defaultColor);

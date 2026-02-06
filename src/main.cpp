@@ -16,6 +16,7 @@
 #include <vkMaze/Components/FrameData.hpp>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_raii.hpp>
+#include <vkMaze/Components/Managers.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -26,7 +27,6 @@ FrameData frames;
 Buffers buf;
 Images img;
 Descriptors dsc;
-MaterialManager materials;
 
 class VKMaze : public VulkanEngine {
 public:
@@ -36,6 +36,8 @@ public:
     materials.create("earth", "textures/earth.png", "");
     materials.color("black", glm::vec3(0));
     materials.color("purple", glm::vec3(100, 20, 100));
+    materials.color("blue", glm::vec3(0, 0, 100));
+    materials.color("red", glm::vec3(100, 0, 0));
 
     // floor
     shapes.add(
@@ -90,7 +92,38 @@ public:
         glm::vec3(0.0f),
         glm::vec3(0.2f),
         *&pipelineUnlit,
-        materials.get("default")
+        materials.get("blue")
+
+    );
+
+    shapes.add(
+        "light_sphere2",
+        Icosphere(3),
+        glm::vec3(0.0f, 5.0f, 0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(0.2f),
+        *&pipelineUnlit,
+        materials.get("red")
+
+    );
+
+    lights.add(
+        "orbit_light",
+        SSBOLight(),
+        POINTLIGHT,
+        shapes.get("light_sphere").pos,
+        glm::vec3(.0f, .0f, 1.0f),
+        1.0f
+
+    );
+
+    lights.add(
+        "orbit_light_vertical",
+        SSBOLight(),
+        POINTLIGHT,
+        shapes.get("light_sphere2").pos,
+        glm::vec3(1.0f, 0, 0),
+        1.0f
 
     );
 
@@ -103,6 +136,8 @@ public:
 
 private:
   ShapeManager shapes;
+  MaterialManager materials;
+  LightManager lights;
   Pipeline pipelinePhong;
   Pipeline pipelineUnlit;
   Pipeline pipelineWireframe;
@@ -164,22 +199,22 @@ private:
     ubo.cameraPos = camera.Position;
   }
 
-  void updateLights(std::vector<SSBOLight> &lights) override {
-    lights.push_back(SSBOLight({
+  void updateLights(std::vector<SSBOLight> &lightVec) override {
+    lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
+    lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
 
-        .pos = shapes.get("light_sphere").pos,
-        .color = glm::vec3(1.0f, 1.0f, 1.0f),
-        .type = POINTLIGHT,
-        .brightness = 0.5f
-
-    }));
+    for (auto &pair : lights.lights) {
+      lightVec.push_back(pair.second);
+    }
     static_assert(sizeof(SSBOLight) == 48, "Size must be 48");
     static_assert(offsetof(SSBOLight, type) == 32, "Type must start at byte 32");
   };
 
   void updateTransforms(std::vector<glm::mat4> &transforms) override {
     shapes.get("light_sphere").pos = {6 * sin(time), 8, 6 * cos(time)};
+    shapes.get("light_sphere2").pos = {-6 * sin(time), 8, -6 * cos(time)};
     shapes.updateTransform("light_sphere");
+    shapes.updateTransform("light_sphere2");
 
     transforms.insert(transforms.begin(), shapes.transforms.begin(), shapes.transforms.end());
   };
@@ -195,7 +230,7 @@ private:
     Pipeline *currentPipeline = nullptr;
 
     for (Shape *s : drawShapes) {
-      PushConstant pc = PushConstant({.transformIndex = s->transformIndex});
+      PushConstant pc = PushConstant({.transformIndex = s->transformIndex, .numLights = lights.getSize()});
       buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
       if (s->pipeline != currentPipeline) {
         buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);

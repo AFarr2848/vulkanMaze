@@ -20,6 +20,7 @@ add_executable(VulkanTest
   src/Mesh.cpp
   src/Material.cpp
   src/Platonics.cpp
+  src/Managers.cpp
 )
 
 find_package(Vulkan REQUIRED)

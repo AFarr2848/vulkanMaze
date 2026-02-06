@@ -68,17 +68,3 @@ private:
   void createTextureImageView(Texture *tex);
   void createTextureSampler(Texture *tex);
 };
-
-class MaterialManager {
-public:
-  Material &get(const std::string &name);
-  Material &create(const std::string &name,
-                   std::string albedo,
-                   std::string normal);
-
-  Material &color(const std::string &, glm::vec3);
-  void initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf);
-
-private:
-  std::unordered_map<std::string, Material> materials;
-};
