@@ -74,16 +74,38 @@ void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
 
 void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
   std::vector<SSBOLight> lights;
+  std::vector<SSBOLight> pLights;
+  std::vector<SSBOLight> dLights;
+  std::vector<SSBOLight> sLights;
   updateLights(lights);
+  for (SSBOLight &l : lights) {
+    switch (l.type) {
+    case POINTLIGHT:
+      pLights.push_back(l);
+      break;
+    case DIRLIGHT:
+      dLights.push_back(l);
+      break;
+    case SPOTLIGHT:
+      sLights.push_back(l);
+      break;
+    }
+  }
 
   std::vector<glm::mat4> transforms;
   updateTransforms(transforms);
-  assert(lights.size() <= MAX_LIGHTS);
+
+  assert(pLights.size() <= MAX_POINT_LIGHTS);
+  assert(dLights.size() <= MAX_DIR_LIGHTS);
+  assert(sLights.size() <= MAX_SPOT_LIGHTS);
   assert(transforms.size() <= MAX_TRANSFORMS);
   static_assert(sizeof(SSBOLight) * MAX_LIGHTS % 256 == 0,
                 "Lights buffer size should be aligned to 256 bytes");
 
-  memcpy(buf->SSBOsMapped[currentImage], lights.data(), lights.size() * sizeof(SSBOLight));
+  memcpy(buf->SSBOsMapped[currentImage], pLights.data(), pLights.size() * sizeof(SSBOLight));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + sizeof(SSBOLight) * MAX_POINT_LIGHTS, dLights.data(), dLights.size() * sizeof(SSBOLight));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_POINT_LIGHTS) + (sizeof(SSBOLight) * MAX_DIR_LIGHTS), sLights.data(), sLights.size() * sizeof(SSBOLight));
+
   memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_LIGHTS), transforms.data(), transforms.size() * sizeof(glm::mat4));
 }
 

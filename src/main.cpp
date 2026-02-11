@@ -31,6 +31,16 @@ Descriptors dsc;
 class VKMaze : public VulkanEngine {
 public:
   void makeShapes() override {
+    std::cout << "Light size:" << sizeof(SSBOLight) << std::endl;
+    std::cout << "Offsets:" << std::endl;
+    std::cout << "\tPos: " << offsetof(SSBOLight, pos) << std::endl;
+    std::cout << "\tDir: " << offsetof(SSBOLight, dir) << std::endl;
+    std::cout << "\tColor: " << offsetof(SSBOLight, color) << std::endl;
+    std::cout << "\tType: " << offsetof(SSBOLight, type) << std::endl;
+    std::cout << "\tBrightness: " << offsetof(SSBOLight, brightness) << std::endl;
+    std::cout << "\tParam1: " << offsetof(SSBOLight, param1) << std::endl;
+    std::cout << "\tParam2: " << offsetof(SSBOLight, param2) << std::endl;
+
     materials.create("default", "", "");
     materials.create("backpack", "textures/backpack_albedo.jpg", "");
     materials.create("earth", "textures/earth.png", "");
@@ -91,7 +101,7 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelineUnlit,
+        *&pipelineWireframe,
         materials.get("blue")
 
     );
@@ -102,28 +112,43 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelineUnlit,
+        *&pipelineWireframe,
         materials.get("red")
 
     );
 
-    lights.add(
+    lights.addDirLight(
+        "sun",
+        glm::vec3(0.3, 0.3, 0.3),
+        glm::vec3(0.0f),
+        .0f
+
+    );
+
+    lights.addPointLight(
         "orbit_light",
-        SSBOLight(),
-        POINTLIGHT,
         shapes.get("light_sphere").pos,
-        glm::vec3(.0f, .0f, 1.0f),
+        glm::vec3(.0f, .0f, .5f),
         1.0f
 
     );
 
-    lights.add(
+    lights.addPointLight(
         "orbit_light_vertical",
-        SSBOLight(),
-        POINTLIGHT,
         shapes.get("light_sphere2").pos,
-        glm::vec3(1.0f, 0, 0),
+        glm::vec3(.5f, 0, 0),
         1.0f
+
+    );
+
+    lights.addSpotLight(
+        "flashlight",
+        camera.Position,
+        camera.Front,
+        glm::vec3(.3f),
+        1.0f,
+        glm::cos(glm::radians(8.0f)),
+        glm::cos(glm::radians(12.5f))
 
     );
 
@@ -202,12 +227,12 @@ private:
   void updateLights(std::vector<SSBOLight> &lightVec) override {
     lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
     lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
+    lights.get("flashlight").pos = camera.Position;
+    lights.get("flashlight").dir = camera.Front;
 
     for (auto &pair : lights.lights) {
       lightVec.push_back(pair.second);
     }
-    static_assert(sizeof(SSBOLight) == 48, "Size must be 48");
-    static_assert(offsetof(SSBOLight, type) == 32, "Type must start at byte 32");
   };
 
   void updateTransforms(std::vector<glm::mat4> &transforms) override {
@@ -230,7 +255,9 @@ private:
     Pipeline *currentPipeline = nullptr;
 
     for (Shape *s : drawShapes) {
-      PushConstant pc = PushConstant({.transformIndex = s->transformIndex, .numLights = lights.getSize()});
+      PushConstant pc = PushConstant();
+      pc.lightNums = lights.getLightNums();
+      pc.transformIndex = s->transformIndex;
       buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
       if (s->pipeline != currentPipeline) {
         buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);
@@ -285,6 +312,8 @@ private:
       camera.processKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
       camera.processKeyboard(DOWN, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   }
 };
 

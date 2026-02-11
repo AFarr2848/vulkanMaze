@@ -49,7 +49,10 @@ private:
 class LightManager {
 public:
   SSBOLight &get(const std::string &name);
-  SSBOLight &add(const std::string &name, SSBOLight l, LightType type, glm::vec3 pos, glm::vec3 color, float brightness);
+  SSBOLight &addPointLight(const std::string &name, glm::vec3 pos, glm::vec3 color, float brightness);
+  SSBOLight &addDirLight(const std::string &name, glm::vec3 dir, glm::vec3 color, float brightness);
+  SSBOLight &addSpotLight(const std::string &name, glm::vec3 pos, glm::vec3 dir, glm::vec3 color, float brightness, float cutoffIn, float cutoffOut);
+  glm::ivec3 getLightNums();
   uint32_t getSize();
   std::unordered_map<std::string, SSBOLight> lights;
 };

@@ -7,23 +7,27 @@ struct GlobalUBO {
   glm::vec3 cameraPos;
   float _pad0;
 };
+
+struct PushConstant {
+  int32_t transformIndex;           // 4 bytes at offset 0
+  alignas(16) glm::ivec3 lightNums; // 12 bytes at offset 16
+                                    // Total: 28 bytes
+};
+
 enum LightType : int32_t {
   POINTLIGHT,
   SPOTLIGHT,
   DIRLIGHT
 };
 
-struct SSBOLight {
+struct alignas(16) SSBOLight {
   glm::vec3 pos;
   float _pad0 = 0;
+  glm::vec3 dir;
+  float _pad1;
   glm::vec3 color;
-  float _pad1 = 0;
   int32_t type;
   float brightness;
-  glm::vec2 _pad2 = glm::vec2(0.0f);
-};
-
-struct PushConstant {
-  uint32_t transformIndex;
-  uint32_t numLights;
+  float param1 = 0;
+  float param2 = 0;
 };

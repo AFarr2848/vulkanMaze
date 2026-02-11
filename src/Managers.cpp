@@ -72,15 +72,63 @@ std::vector<Shape *> ShapeManager::getDrawOrder() {
 SSBOLight &LightManager::get(const std::string &name) {
   return lights.at(name);
 }
-SSBOLight &LightManager::add(const std::string &name, SSBOLight l, LightType type, glm::vec3 pos, glm::vec3 color, float brightness) {
+SSBOLight &LightManager::addPointLight(const std::string &name, glm::vec3 pos, glm::vec3 color, float brightness) {
+  SSBOLight l;
   l.pos = pos;
-  l.type = type;
+  l.type = POINTLIGHT;
   l.color = color;
   l.brightness = brightness;
 
   lights.emplace(name, l);
 
   return lights.at(name);
+}
+
+SSBOLight &LightManager::addDirLight(const std::string &name, glm::vec3 dir, glm::vec3 color, float brightness) {
+  SSBOLight l;
+  l.dir = dir;
+  l.color = color;
+  l.brightness = brightness;
+  l.type = DIRLIGHT;
+
+  lights.emplace(name, l);
+
+  return lights.at(name);
+}
+
+SSBOLight &LightManager::addSpotLight(const std::string &name, glm::vec3 pos, glm::vec3 dir, glm::vec3 color, float brightness, float cutoffIn, float cutoffOut) {
+  SSBOLight l;
+  l.pos = pos;
+  l.dir = dir;
+  l.color = color;
+  l.brightness = brightness;
+  l.type = SPOTLIGHT;
+  l.param1 = cutoffIn;
+  l.param2 = cutoffOut;
+
+  lights.emplace(name, l);
+
+  return lights.at(name);
+}
+
+glm::ivec3 LightManager::getLightNums() {
+  int p = 0;
+  int d = 0;
+  int s = 0;
+  for (auto &pair : lights) {
+    switch (pair.second.type) {
+    case POINTLIGHT:
+      p++;
+      break;
+    case DIRLIGHT:
+      d++;
+      break;
+    case SPOTLIGHT:
+      s++;
+      break;
+    }
+  }
+  return glm::vec3(p, d, s);
 }
 
 uint32_t LightManager::getSize() {

@@ -30,6 +30,9 @@ void VulkanContext::createInstance() {
 
   // Get the required extensions.
   auto requiredExtensions = getRequiredExtensions();
+  for (auto e : requiredExtensions) {
+    std::cout << e << std::endl;
+  }
 
   // Check if the required extensions are supported by the Vulkan implementation.
   auto extensionProperties = context.enumerateInstanceExtensionProperties();
