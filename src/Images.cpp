@@ -3,8 +3,8 @@
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
 
-vk::raii::ImageView Images::createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags) {
-  vk::ImageViewCreateInfo viewInfo{.image = image, .viewType = vk::ImageViewType::e2D, .format = format, .subresourceRange = {flags, 0, 1, 0, 1}};
+vk::raii::ImageView Images::createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer, uint32_t layerCount) {
+  vk::ImageViewCreateInfo viewInfo{.image = image, .viewType = vk::ImageViewType::e2D, .format = format, .subresourceRange = {flags, 0, 1, layer, layerCount}};
   return vk::raii::ImageView(cxt->device, viewInfo);
 }
 
@@ -23,13 +23,13 @@ vk::Format Images::findDepthFormat() {
       vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
-void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory) {
+void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount) {
   vk::ImageCreateInfo imageInfo{
       .imageType = vk::ImageType::e2D,
       .format = format,
       .extent = {width, height, 1},
       .mipLevels = 1,
-      .arrayLayers = 1,
+      .arrayLayers = layerCount,
       .samples = vk::SampleCountFlagBits::e1,
       .tiling = tiling,
       .usage = usage,

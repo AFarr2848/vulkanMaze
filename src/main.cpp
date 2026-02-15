@@ -90,7 +90,7 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(1.0f),
-        *&pipelinePhong,
+        *&pipelineWireframe,
         materials.get("earth")
 
     );
@@ -140,17 +140,18 @@ public:
         1.0f
 
     );
+    /*
+        lights.addSpotLight(
+            "flashlight",
+            camera.Position,
+            camera.Front,
+            glm::vec3(.3f),
+            1.0f,
+            glm::cos(glm::radians(8.0f)),
+            glm::cos(glm::radians(12.5f))
 
-    lights.addSpotLight(
-        "flashlight",
-        camera.Position,
-        camera.Front,
-        glm::vec3(.3f),
-        1.0f,
-        glm::cos(glm::radians(8.0f)),
-        glm::cos(glm::radians(12.5f))
-
-    );
+        );
+        */
 
     // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
   }
@@ -227,8 +228,8 @@ private:
   void updateLights(std::vector<SSBOLight> &lightVec) override {
     lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
     lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
-    lights.get("flashlight").pos = camera.Position;
-    lights.get("flashlight").dir = camera.Front;
+    // lights.get("flashlight").pos = camera.Position;
+    // lights.get("flashlight").dir = camera.Front;
 
     for (auto &pair : lights.lights) {
       lightVec.push_back(pair.second);

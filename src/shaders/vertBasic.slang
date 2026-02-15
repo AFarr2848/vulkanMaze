@@ -1,4 +1,5 @@
 
+
 struct VSInput {
   float3 pos;
   float3 norm;
@@ -7,6 +8,7 @@ struct VSInput {
 
 struct PushConstant {
   int32_t transformIndex;
+  int3 lightNums;
 }
 
 struct UniformBuffer {
@@ -15,6 +17,22 @@ struct UniformBuffer {
   float4x4 proj;
   float3 cameraPos;
 }
+
+enum LightType : int32_t {
+  POINTLIGHT,
+  SPOTLIGHT,
+  DIRLIGHT
+};
+
+struct Light {
+  float3 pos;
+  float3 dir;
+  float3 color;
+  LightType type;
+  float brightness;
+  float param1;
+  float param2;
+};
 
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
@@ -32,11 +50,8 @@ struct VertexOutput {
   float3 color;
   float3 cameraPos;
   float2 uv;
+  float3 lightNums;
 }
-
-static float ambientStrength = 0.05;
-static float diffuseStrength = 0.08;
-static float specularStrength = 0.1;
 
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
@@ -47,16 +62,6 @@ VertexOutput vertMain(VSInput input) {
   output.norm = input.norm;
   output.cameraPos = ubo.cameraPos;
   output.uv = input.uv;
+  output.lightNums = push.lightNums;
   return output;
 }
-
-[[vk::binding(0, 1)]]
-Sampler2D albedo;
-
-[shader("fragment")]
-float4 fragMain(VertexOutput inVert) : SV_Target {
-  // return float4(float3(phong), 1.0);
-  return float4(albedo.Sample(inVert.uv).xyz, 1.0);
-  // return float4(inVert.norm / 2 + 0.5, 1.0);
-}
-

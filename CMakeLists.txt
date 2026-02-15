@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+
+
 add_executable(VulkanTest
   src/Buffers.cpp
   src/Descriptors.cpp
@@ -21,6 +23,7 @@ add_executable(VulkanTest
   src/Material.cpp
   src/Platonics.cpp
   src/Managers.cpp
+  include/spirv-reflect/spirv_reflect.cpp
 )
 
 find_package(Vulkan REQUIRED)
@@ -33,6 +36,7 @@ pkg_check_modules(GLFW REQUIRED glfw3)
 target_compile_definitions(VulkanTest PRIVATE
     VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 )
+target_compile_definitions(VulkanTest PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
 target_include_directories(VulkanTest PRIVATE
     ${Vulkan_INCLUDE_DIRS}
@@ -69,8 +73,9 @@ file(MAKE_DIRECTORY ${SHADER_OUT_DIR})
 
 # List of .slang shaders
 set(SHADER_SOURCES
-    ${SHADER_DIR}/shader.slang
-    ${SHADER_DIR}/unlit.slang
+    ${SHADER_DIR}/fragPhong.slang
+    ${SHADER_DIR}/fragUnlit.slang
+    ${SHADER_DIR}/vertBasic.slang
 )
 
 set(SHADER_BINARIES "")
@@ -87,8 +92,6 @@ foreach(SHADER ${SHADER_SOURCES})
                 -profile spirv_1_4
                 -emit-spirv-directly
                 -fvk-use-entrypoint-name
-                -entry vertMain
-                -entry fragMain
                 -o ${OUTPUT_FILE}
         DEPENDS ${SHADER}
         COMMENT "Compiling ${SHADER_NAME}.slang → SPIR-V"

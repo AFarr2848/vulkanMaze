@@ -12,6 +12,27 @@ struct PipelineDsc {
 
   std::vector<vk::DescriptorSetLayout> setLayouts;
 };
+struct InputAssemblyDesc {
+  vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+  bool primitiveRestart = false;
+};
+
+struct RasterizationDesc {
+  vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
+  vk::CullModeFlags cullMode = vk::CullModeFlagBits::eBack;
+  vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
+};
+
+struct DepthStencilDesc {
+  bool depthTest = true;
+  bool depthWrite = true;
+  vk::CompareOp compareOp = vk::CompareOp::eLess;
+};
+
+struct ColorDesc {
+  int colorAttachmentCount = 1;
+  vk::Format colorAttachmentFormats;
+};
 
 class Pipeline {
 public:
