@@ -1,18 +1,20 @@
 #include "vkMaze/Objects/Pipelines.hpp"
+#include "vkMaze/Components/Spirv.hpp"
 #include "vkMaze/Objects/Vertex.hpp"
 #include "vkMaze/Components/Descriptors.hpp"
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
-#include "vkMaze/Util.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vulkan/vulkan.hpp"
+#include <iostream>
+#include <vulkan/vulkan_to_string.hpp>
 
 void Pipeline::createPipeline(const PipelineDsc &dsc) {
-  vk::raii::ShaderModule shaderModule = createShaderModule(readFile(dsc.shaderPath));
+  SpirvReflectPipeline reflected(dsc.vertPath, dsc.fragPath, pipelineLayout, *cxt);
 
-  vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule, .pName = "vertMain"};
-  vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "fragMain"};
+  vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = reflected.vkVertModule, .pName = "vertMain"};
+  vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = reflected.vkFragModule, .pName = "fragMain"};
   vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
   auto bindingDescription = Vertex::getBindingDescription();
@@ -60,23 +62,6 @@ void Pipeline::createPipeline(const PipelineDsc &dsc) {
       vk::DynamicState::eScissor};
   vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
 
-  vk::PushConstantRange pushConstantRange{
-      .stageFlags = vk::ShaderStageFlagBits::eVertex,
-      .offset = 0,
-      .size = sizeof(PushConstant),
-
-  };
-
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = static_cast<uint32_t>(dsc.setLayouts.size()),
-      .pSetLayouts = dsc.setLayouts.data(),
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges = &pushConstantRange
-
-  };
-
-  pipelineLayout = vk::raii::PipelineLayout(cxt->device, pipelineLayoutInfo);
-
   vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
       {.stageCount = 2,
        .pStages = shaderStages,
@@ -93,6 +78,16 @@ void Pipeline::createPipeline(const PipelineDsc &dsc) {
       {.colorAttachmentCount = 1, .pColorAttachmentFormats = &swp->swapChainSurfaceFormat.format, .depthAttachmentFormat = img->findDepthFormat()}};
 
   graphicsPipeline = vk::raii::Pipeline(cxt->device, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+  shaderResources = reflected.shaderResources;
+  pcRange = reflected.pcRange;
+  hasPushConstants = reflected.hasPushConstants;
+}
+bool Pipeline::usesSet(uint32_t setNum) {
+  for (ShaderResource &s : shaderResources) {
+    if (s.set == setNum)
+      return true;
+  }
+  return false;
 }
 
 [[nodiscard]] vk::raii::ShaderModule Pipeline::createShaderModule(const std::vector<char> &code) const {

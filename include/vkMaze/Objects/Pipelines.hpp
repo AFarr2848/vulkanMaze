@@ -1,16 +1,17 @@
 #pragma once
+#include <filesystem>
 class VulkanContext;
 class Descriptors;
 class Swapchain;
 class Images;
+class ShaderResource;
 
 struct PipelineDsc {
-  std::string shaderPath;
+  const std::filesystem::path &fragPath;
+  const std::filesystem::path &vertPath;
   vk::PrimitiveTopology topology;
   vk::PolygonMode polygonMode;
   vk::CullModeFlags cullModeFlags;
-
-  std::vector<vk::DescriptorSetLayout> setLayouts;
 };
 struct InputAssemblyDesc {
   vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
@@ -38,22 +39,24 @@ class Pipeline {
 public:
   void init(VulkanContext &cxt, Descriptors &dsc, Swapchain &swp, Images &img) {
     this->cxt = &cxt;
-    this->dsc = &dsc;
     this->swp = &swp;
     this->img = &img;
   }
 
   void createPipeline(const PipelineDsc &dsc);
+  bool usesSet(uint32_t setNum);
 
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
+  std::vector<ShaderResource> shaderResources;
+  vk::PushConstantRange pcRange;
+  bool hasPushConstants;
 
   void createGraphicsPipeline();
   [[nodiscard]] vk::raii::ShaderModule createShaderModule(const std::vector<char> &code) const;
 
 private:
   VulkanContext *cxt;
-  Descriptors *dsc;
   Swapchain *swp;
   Images *img;
 };

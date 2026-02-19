@@ -50,7 +50,6 @@ struct VertexOutput {
   float3 color;
   float3 cameraPos;
   float2 uv;
-  float3 lightNums;
 }
 
 [shader("vertex")]
@@ -62,6 +61,5 @@ VertexOutput vertMain(VSInput input) {
   output.norm = input.norm;
   output.cameraPos = ubo.cameraPos;
   output.uv = input.uv;
-  output.lightNums = push.lightNums;
   return output;
 }

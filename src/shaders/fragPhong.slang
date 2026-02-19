@@ -7,7 +7,11 @@ struct VertexOutput {
   float3 color;
   float3 cameraPos;
   float2 uv;
-  float3 lightNums;
+}
+
+struct PushConstant {
+  int32_t transformIndex;
+  int3 lightNums;
 }
 
 enum LightType : int32_t {
@@ -33,6 +37,9 @@ static float attConstant = 1.0;
 static float attLinear = 0.09;
 static float attQuadratic = 0.032;
 
+[[vk::push_constant]]
+PushConstant push;
+
 [[vk::binding(0, 1)]]
 Sampler2D albedo;
 
@@ -47,14 +54,14 @@ StructuredBuffer<Light> sLights;
 float4 fragMain(VertexOutput inVert) : SV_Target {
   float3 phong = 0;
 
-  for (int i = 0; i < inVert.lightNums[0]; i++) {
+  for (int i = 0; i < push.lightNums[0]; i++) {
     phong += calculatePointLight(inVert, pLights[i]);
   }
-  for (int i = 0; i < inVert.lightNums[1]; i++) {
+  for (int i = 0; i < push.lightNums[1]; i++) {
     phong += calculateDirLight(inVert, dLights[i]);
   }
 
-  for (int i = 0; i < inVert.lightNums[2]; i++) {
+  for (int i = 0; i < push.lightNums[2]; i++) {
     phong += calculateSpotLight(inVert, sLights[i]);
   }
   // return float4(float3(phong), 1.0);

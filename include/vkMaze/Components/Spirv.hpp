@@ -1,56 +1,35 @@
 #pragma once
 #include "spirv-reflect/spirv_reflect.h"
-#include "vulkan/vulkan.hpp"
 #include <filesystem>
-#include <map>
-#include <sys/types.h>
+
 class VulkanContext;
+struct ShaderResource;
 
 class SpirvReflectPipeline {
 public:
-  // map to prevent sets used in different shader stages from making new sets
-  // ik im gonna forget why I did this
-  SpirvReflectPipeline(const std::filesystem::path &vertPath, const std::filesystem::path &fragPath, vk::PipelineLayout &layout, VulkanContext &cxt) {
-    this->cxt = &cxt;
-    readSpirv(vertPath, vertModule);
-    readSpirv(fragPath, fragModule);
+  SpirvReflectPipeline(const std::filesystem::path &vertPath, const std::filesystem::path &fragPath, vk::raii::PipelineLayout &layout, VulkanContext &cxt);
 
-    getBindingInfo(vertModule, vk::ShaderStageFlagBits::eVertex);
-    getBindingInfo(fragModule, vk::ShaderStageFlagBits::eFragment);
+  vk::raii::ShaderModule vkVertModule = nullptr;
+  vk::raii::ShaderModule vkFragModule = nullptr;
 
-    createSetLayouts();
+  std::vector<ShaderResource> shaderResources;
 
-    pcRange = vk::PushConstantRange{
-        .offset = UINT32_MAX,
-        .size = 0
-
-    };
-    getPushConstantInfo(fragModule, vk::ShaderStageFlagBits::eFragment);
-    getPushConstantInfo(fragModule, vk::ShaderStageFlagBits::eFragment);
-
-    makePipelineLayout(layout);
-  }
-
-  std::map<uint32_t, std::map<uint32_t, vk::DescriptorSetLayoutBinding>> bindingMaps;
-
-  void getPushConstantInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag);
-  void getBindingInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag);
-  void readSpirv(const std::filesystem::path &path, SpvReflectShaderModule &module);
-  void makePipelineLayout(vk::PipelineLayout &layout);
-  void createSetLayouts();
+  bool hasPushConstants = false;
+  vk::PushConstantRange pcRange;
 
 private:
-  std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindings;
-  std::vector<vk::DescriptorSetLayout> layouts;
-  vk::PushConstantRange pcRange;
-  SpvReflectShaderModule fragModule;
-  SpvReflectShaderModule vertModule;
-  VulkanContext *cxt;
-};
+  void getPushConstantInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag);
+  void getBindingInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag);
+  void readSpirv(const std::filesystem::path &path, SpvReflectShaderModule &module, vk::raii::ShaderModule &vkModule);
+  void createSetLayouts();
+  void makePipelineLayout(vk::raii::PipelineLayout &layout);
+  void mergeStageFlags();
+  void createShaderResources();
 
-class SpirvInfo {
-public:
-  uint32_t dscSetCount = 0;
-  std::vector<SpvReflectDescriptorSet *> spvDscSets;
-  std::vector<vk::DescriptorSetLayoutBinding *> vkDscSets;
+  std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindings;
+  std::vector<std::vector<std::string>> names;
+  std::vector<vk::raii::DescriptorSetLayout> layouts;
+  VulkanContext *cxt;
+  SpvReflectShaderModule spvFragModule;
+  SpvReflectShaderModule spvVertModule;
 };

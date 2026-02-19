@@ -4,6 +4,21 @@
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Components/Buffers.hpp"
 #include "vulkan/vulkan.hpp"
+#include <stdexcept>
+
+vk::raii::DescriptorSet &Descriptors::getSet(uint32_t setNum, uint32_t currentFrame) {
+  switch (setNum) {
+  case 0:
+    return descriptorSets[currentFrame];
+  case 2:
+    return lightDescriptorSets[currentFrame];
+  case 3:
+    return transformDescriptorSets[currentFrame];
+  default:
+    throw std::runtime_error("Requested descriptor set doesn't exist!");
+  }
+}
+
 void Descriptors::createGlobalDescriptorSets() {
   std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
 

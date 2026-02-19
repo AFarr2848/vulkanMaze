@@ -4,6 +4,16 @@
 #include <vkMaze/Objects/UBOs.hpp>
 #include <vkMaze/Components/Managers.hpp>
 
+ShaderResource &ShaderResourceManager::get(const std::string &name) {
+  return resources.at(name);
+}
+ShaderResource &ShaderResourceManager::add(ShaderResource resource) {
+  resources.emplace(resource.name, resource);
+  return resources.at(resource.name);
+}
+
+std::unordered_map<std::string, ShaderResource> lights;
+
 Material &MaterialManager::get(const std::string &name) {
   return materials.at(name);
 }

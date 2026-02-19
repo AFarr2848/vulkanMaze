@@ -31,3 +31,11 @@ struct alignas(16) SSBOLight {
   float param1 = 0;
   float param2 = 0;
 };
+
+struct ShaderResource {
+
+  uint32_t set;
+  uint32_t binding;
+  std::string name;
+  vk::DescriptorSet dscSet;
+};

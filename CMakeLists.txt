@@ -23,6 +23,7 @@ add_executable(VulkanTest
   src/Material.cpp
   src/Platonics.cpp
   src/Managers.cpp
+  src/Spirv.cpp
   include/spirv-reflect/spirv_reflect.cpp
 )
 

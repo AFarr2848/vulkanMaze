@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <unordered_map>
+
 class Material;
 class VulkanContext;
 class Images;
@@ -12,6 +13,8 @@ class Buffers;
 class Shape;
 class Vertex;
 class SSBOLight;
+struct ShaderResource;
+
 enum LightType : int32_t;
 
 class MaterialManager {
@@ -55,4 +58,12 @@ public:
   glm::ivec3 getLightNums();
   uint32_t getSize();
   std::unordered_map<std::string, SSBOLight> lights;
+};
+
+class ShaderResourceManager {
+public:
+  ShaderResource &get(const std::string &name);
+  ShaderResource &add(ShaderResource resource);
+
+  std::unordered_map<std::string, ShaderResource> resources;
 };

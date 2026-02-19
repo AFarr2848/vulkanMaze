@@ -8,6 +8,7 @@
 #include <vkMaze/Components/VulkanEngine.hpp>
 #include <vkMaze/Objects/Camera.hpp>
 #include <vkMaze/Objects/Material.hpp>
+#include <cstdint>
 #include <vector>
 #include <iostream>
 #include <vkMaze/Objects/Shapes.hpp>
@@ -17,6 +18,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Components/Managers.hpp>
+#include <vkMaze/Components/Spirv.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -90,7 +92,7 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(1.0f),
-        *&pipelineWireframe,
+        *&pipelinePhong,
         materials.get("earth")
 
     );
@@ -101,7 +103,7 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelineWireframe,
+        *&pipelineUnlit,
         materials.get("blue")
 
     );
@@ -112,7 +114,7 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelineWireframe,
+        *&pipelinePhong,
         materials.get("red")
 
     );
@@ -181,31 +183,31 @@ private:
     pipelinePhong.init(*cxt, *dsc, *swp, *img);
     pipelinePhong.createPipeline({
 
-        .shaderPath = "build/shaders/shader.spv",
+        .fragPath = "build/shaders/fragPhong.spv",
+        .vertPath = "build/shaders/vertBasic.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eFill,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
-        .setLayouts = dscSetLayouts
 
     });
     pipelineUnlit.init(*cxt, *dsc, *swp, *img);
     pipelineUnlit.createPipeline({
 
-        .shaderPath = "build/shaders/unlit.spv",
+        .fragPath = "build/shaders/fragUnlit.spv",
+        .vertPath = "build/shaders/vertBasic.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eFill,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
-        .setLayouts = dscSetLayouts
 
     });
     pipelineWireframe.init(*cxt, *dsc, *swp, *img);
     pipelineWireframe.createPipeline({
 
-        .shaderPath = "build/shaders/unlit.spv",
+        .fragPath = "build/shaders/fragUnlit.spv",
+        .vertPath = "build/shaders/vertBasic.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eLine,
         .cullModeFlags = vk::CullModeFlagBits::eBack,
-        .setLayouts = dscSetLayouts
 
     });
   }
@@ -256,42 +258,56 @@ private:
     Pipeline *currentPipeline = nullptr;
 
     for (Shape *s : drawShapes) {
-      PushConstant pc = PushConstant();
-      pc.lightNums = lights.getLightNums();
-      pc.transformIndex = s->transformIndex;
-      buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
+
       if (s->pipeline != currentPipeline) {
-        buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);
-        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
-        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
         currentPipeline = s->pipeline;
+        buf.bindPipeline(vk::PipelineBindPoint::eGraphics, currentPipeline->graphicsPipeline);
+        if (currentPipeline->usesSet(0))
+          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 0, *dsc->getSet(0, currentFrame), nullptr);
+        if (currentPipeline->usesSet(2))
+          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *dsc->getSet(2, currentFrame), nullptr);
+        if (currentPipeline->usesSet(3))
+          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *dsc->getSet(3, currentFrame), nullptr);
       }
-      if (s->material != currentMaterial) {
+      if (s->material != currentMaterial && currentPipeline->usesSet(1)) {
         buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
         currentMaterial = s->material;
       }
+
+      if (s->pipeline->hasPushConstants) {
+        PushConstant pc = PushConstant();
+        pc.lightNums = lights.getLightNums();
+        pc.transformIndex = s->transformIndex;
+        const auto *pcBytes = reinterpret_cast<const uint8_t *>(&pc);
+        buf.pushConstants(s->pipeline->pipelineLayout,
+                          s->pipeline->pcRange.stageFlags,
+                          s->pipeline->pcRange.offset,
+                          vk::ArrayProxy<const uint8_t>(s->pipeline->pcRange.size, pcBytes));
+      }
+
       buf.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
     }
 
     /*
-            for (const auto &pair : shapes.getShapes()) {
-      vk::raii::CommandBuffer &buf = frames->commandBuffers[currentFrame];
-
-      const Shape &s = pair.second;
-      PushConstant pc = PushConstant({.transformIndex = s.transformIndex});
-
-      buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s.pipeline->graphicsPipeline);
-      buf.pushConstants(s.pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
-      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 1, *s.material->albedo.descriptorSet, nullptr);
-      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
-      buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s.pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
-
-      buf.drawIndexed(s.range.indexCount, 1, s.range.indexOffset, s.range.vertexOffset, 0);
-    }
-
-    */
+        for (Shape *s : drawShapes) {
+          PushConstant pc = PushConstant();
+          pc.lightNums = lights.getLightNums();
+          pc.transformIndex = s->transformIndex;
+          buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
+          if (s->pipeline != currentPipeline) {
+            buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);
+            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
+            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
+            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
+            currentPipeline = s->pipeline;
+          }
+          if (s->material != currentMaterial) {
+            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
+            currentMaterial = s->material;
+          }
+          buf.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
+        }
+      */
   }
 
   void mouseMoved(float xoffset, float yoffset) override {
