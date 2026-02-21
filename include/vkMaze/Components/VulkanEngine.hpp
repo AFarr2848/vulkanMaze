@@ -11,6 +11,7 @@ class GlobalUBO;
 class GLFWwindow;
 class Window;
 class SSBOLight;
+class RenderPass;
 
 class VulkanEngine {
 public:
@@ -20,7 +21,7 @@ public:
   int frameCount = 0;
   uint32_t semaphoreIndex = 0;
 
-  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf) {
+  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf, RenderPass &renderPass) {
     this->win = &win;
     this->cxt = &cxt;
     this->swp = &swp;
@@ -28,6 +29,7 @@ public:
     this->img = &img;
     this->dsc = &dsc;
     this->buf = &buf;
+    this->renderPass = &renderPass;
   }
 
   void run();
@@ -51,6 +53,7 @@ public:
   virtual void makeMaterials();
   virtual void updateLights(std::vector<SSBOLight> &);
   virtual void updateTransforms(std::vector<glm::mat4> &);
+  virtual void createDescriptorSets();
 
 protected:
   void updateGlobalUniformBuffer(uint32_t currentFrame);
@@ -63,5 +66,6 @@ protected:
   Buffers *buf;
   Images *img;
   Descriptors *dsc;
+  RenderPass *renderPass;
   int32_t currentFrame = 0;
 };

@@ -1,4 +1,5 @@
 #include "vkMaze/Components/Images.hpp"
+#include "vkMaze/Components/EngineConfig.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
@@ -12,6 +13,13 @@ void Images::createDepthResources() {
   vk::Format depthFormat = findDepthFormat();
   createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
   depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+}
+
+void Images::createColorResources() {
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
+    createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, colorImages[i], colorImageMemory[i]);
+  }
 }
 
 vk::Format Images::findDepthFormat() {

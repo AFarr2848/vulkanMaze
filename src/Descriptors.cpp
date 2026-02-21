@@ -4,12 +4,12 @@
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Components/Buffers.hpp"
 #include "vulkan/vulkan.hpp"
+#include <iostream>
 #include <stdexcept>
+#include <vulkan/vulkan_raii.hpp>
 
 vk::raii::DescriptorSet &Descriptors::getSet(uint32_t setNum, uint32_t currentFrame) {
   switch (setNum) {
-  case 0:
-    return descriptorSets[currentFrame];
   case 2:
     return lightDescriptorSets[currentFrame];
   case 3:
@@ -19,8 +19,9 @@ vk::raii::DescriptorSet &Descriptors::getSet(uint32_t setNum, uint32_t currentFr
   }
 }
 
-void Descriptors::createGlobalDescriptorSets() {
-  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
+/*
+void Descriptors::createPostDescriptorSets() {
+  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *ppSetLayout);
 
   vk::DescriptorSetAllocateInfo allocInfo{
       .descriptorPool = descriptorPool,
@@ -29,33 +30,62 @@ void Descriptors::createGlobalDescriptorSets() {
 
   };
 
-  descriptorSets.clear();
-  descriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
+  vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
+  vk::SamplerCreateInfo samplerInfo{
+      .magFilter = vk::Filter::eLinear,
+      .minFilter = vk::Filter::eLinear,
+      .mipmapMode = vk::SamplerMipmapMode::eLinear,
+      .addressModeU = vk::SamplerAddressMode::eRepeat,
+      .addressModeV = vk::SamplerAddressMode::eRepeat,
+      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .mipLodBias = 0.0f,
+      .anisotropyEnable = vk::True,
+      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      .compareEnable = vk::False,
+      .compareOp = vk::CompareOp::eAlways};
+  vk::raii::Sampler sampler = vk::raii::Sampler(cxt->device, samplerInfo);
+
+  ppDescriptorSets.clear();
+  ppDescriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::DescriptorBufferInfo camInfo{
-        .buffer = buf->globalUBOs[i],
+    vk::DescriptorBufferInfo colorInfo{
+        .buffer = buf->SSBOs.at(),
         .offset = 0,
-        .range = sizeof(GlobalUBO)
+        .range = sizeof()
 
     };
 
-    vk::WriteDescriptorSet camWrite{
+    vk::WriteDescriptorSet colorWrite{
         .dstSet = descriptorSets[i],
         .dstBinding = 0,
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .pBufferInfo = &camInfo
+        .pBufferInfo = &colorInfo
 
     };
+
+    vk::DescriptorImageInfo imageInfo{
+        .sampler = sampler,
+        .imageView = imageView,
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+    vk::WriteDescriptorSet write{
+        .dstSet = ppDescriptorSets[i],
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &imageInfo};
 
     std::vector<vk::WriteDescriptorSet> writes = {camWrite};
 
     cxt->device.updateDescriptorSets(writes, {});
   }
 }
+*/
 
 void Descriptors::createObjDescriptorSets() {
+  std::cout << "Creating obj descriggpgjgh" << std::endl;
   std::vector<vk::DescriptorSetLayout> lightLayouts(MAX_FRAMES_IN_FLIGHT, *lightSetLayout);
   std::vector<vk::DescriptorSetLayout> transformLayouts(MAX_FRAMES_IN_FLIGHT, *transformSetLayout);
   vk::DescriptorSetAllocateInfo lightAllocInfo{
@@ -134,6 +164,7 @@ void Descriptors::createObjDescriptorSets() {
 
     cxt->device.updateDescriptorSets(writes, {});
   }
+  std::cout << "wthelly" << std::endl;
 }
 
 void Descriptors::createObjectDescriptorSetLayout() {
@@ -190,6 +221,24 @@ void Descriptors::createObjectDescriptorSetLayout() {
   lightSetLayout = vk::raii::DescriptorSetLayout(cxt->device, lightLayoutInfo);
   transformSetLayout = vk::raii::DescriptorSetLayout(cxt->device, transformLayoutInfo);
 }
+/*
+void Descriptors::createPostSetLayout() {
+  vk::DescriptorSetLayoutBinding ppLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+  std::vector<vk::DescriptorSetLayoutBinding> layouts = {ppLayoutBinding};
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{
+      .flags = {},
+      .bindingCount = 1,
+      .pBindings = layouts.data()};
+
+  ppSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
+}
+*/
 
 void Descriptors::createGlobalDescriptorSetLayout() {
   vk::DescriptorSetLayoutBinding uboLayoutBinding{
@@ -247,12 +296,16 @@ void Descriptors::createDescriptorPool() {
 
   };
 
-  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeMat, poolSizeObj};
+  vk::DescriptorPoolSize poolSizePP{
+      .type = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = MAX_FRAMES_IN_FLIGHT};
+
+  std::vector<vk::DescriptorPoolSize> poolSizes = {poolSizeUniform, poolSizeMat, poolSizeObj, poolSizePP};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = MAX_FRAMES_IN_FLIGHT * 3 + 10,
-      .poolSizeCount = 3,
+      .maxSets = MAX_FRAMES_IN_FLIGHT * 6 + 10,
+      .poolSizeCount = 4,
       .pPoolSizes = poolSizes.data()
 
   };

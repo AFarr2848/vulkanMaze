@@ -14,11 +14,12 @@ public:
   vk::raii::DescriptorSetLayout matSetLayout = nullptr;
   vk::raii::DescriptorSetLayout lightSetLayout = nullptr;
   vk::raii::DescriptorSetLayout transformSetLayout = nullptr;
-  std::vector<vk::raii::DescriptorSet> descriptorSets;
+  vk::raii::DescriptorSetLayout ppSetLayout = nullptr;
+
   std::vector<vk::raii::DescriptorSet> lightDescriptorSets;
   std::vector<vk::raii::DescriptorSet> transformDescriptorSets;
+  std::vector<vk::raii::DescriptorSet> ppDescriptorSets;
 
-  void createGlobalDescriptorSets();
   void createGlobalDescriptorSetLayout();
   void createDescriptorPool();
   void createMaterialDescriptorSetLayout();

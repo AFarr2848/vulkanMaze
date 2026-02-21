@@ -19,6 +19,7 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Components/Managers.hpp>
 #include <vkMaze/Components/Spirv.hpp>
+#include <vkMaze/Components/RenderPass.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -29,6 +30,7 @@ FrameData frames;
 Buffers buf;
 Images img;
 Descriptors dsc;
+RenderPass renderPass;
 
 class VKMaze : public VulkanEngine {
 public:
@@ -310,6 +312,13 @@ private:
       */
   }
 
+  void createDescriptorSets() override {
+    std::cout << "inittttttt" << std::endl;
+    renderPass->init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
+    std::cout << "renderPass init complete" << std::endl;
+    renderPass->createGlobalDscSets();
+  }
+
   void mouseMoved(float xoffset, float yoffset) override {
     camera.ProcessMouseMovement(xoffset, yoffset);
   }
@@ -338,7 +347,7 @@ int main() {
   try {
     VKMaze app;
 
-    app.init(win, cxt, swp, frames, img, dsc, buf);
+    app.init(win, cxt, swp, frames, img, dsc, buf, renderPass);
     app.run();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

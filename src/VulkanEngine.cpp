@@ -11,6 +11,7 @@
 #include "vkMaze/Objects/Pipelines.hpp"
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Components/RenderPass.hpp"
 #include "vkMaze/Objects/Vertex.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include <iostream>
@@ -165,6 +166,7 @@ void VulkanEngine::drawFrame() {
 }
 
 void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
+
   std::vector<uint32_t> indices = getIndices();
   frames->commandBuffers[currentFrame].begin({});
   // Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
@@ -188,41 +190,8 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
       vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, // dstAccessMask
       vk::ImageAspectFlagBits::eDepth                                                                   // dstStage
   );
-  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
-  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-  vk::RenderingAttachmentInfo attachmentInfo = {
-      .imageView = swp->swapChainImageViews[imageIndex],
-      .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eStore,
-      .clearValue = clearColor
+  renderPass->record(frames->commandBuffers[currentFrame], currentFrame, swp->swapChainImageViews[imageIndex], img->depthImageView);
 
-  };
-  vk::RenderingAttachmentInfo depthAttachmentInfo = {
-      .imageView = img->depthImageView,
-      .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eDontCare,
-      .clearValue = clearDepth
-
-  };
-  vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swp->swapChainExtent},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &attachmentInfo,
-      .pDepthAttachment = &depthAttachmentInfo
-
-  };
-  frames->commandBuffers[currentFrame].beginRendering(renderingInfo);
-  frames->commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
-  frames->commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
-
-  frames->commandBuffers[currentFrame].bindVertexBuffers(0, *buf->vertexBuffer, {0});
-  frames->commandBuffers[currentFrame].bindIndexBuffer(*buf->indexBuffer, 0, vk::IndexType::eUint32);
-
-  drawScreen();
-  frames->commandBuffers[currentFrame].endRendering();
   // After rendering, transition the swapchain image to PRESENT_SRC
   img->transition_image_layout(
       swp->swapChainImages[imageIndex],
@@ -286,8 +255,10 @@ void VulkanEngine::initVulkan() {
   std::printf("Creating descriptor pool...\n");
   dsc->createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
-  dsc->createGlobalDescriptorSets();
   dsc->createObjDescriptorSets();
+
+  std::printf("Creating renderpass descriptor sets...\n");
+  createDescriptorSets();
   std::printf("Creating command buffers...\n");
   frames->createCommandBuffers();
   std::printf("Creating sync objects...\n");
@@ -321,5 +292,6 @@ void VulkanEngine::processInput(GLFWwindow *) {};
 void VulkanEngine::createPipelines() {};
 void VulkanEngine::makeShapes() {};
 void VulkanEngine::makeMaterials() {};
+void VulkanEngine::createDescriptorSets() {};
 std::vector<Vertex> VulkanEngine::getVertices() { return {}; };
 std::vector<uint32_t> VulkanEngine::getIndices() { return {}; };
