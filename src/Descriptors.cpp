@@ -10,8 +10,6 @@
 
 vk::raii::DescriptorSet &Descriptors::getSet(uint32_t setNum, uint32_t currentFrame) {
   switch (setNum) {
-  case 2:
-    return lightDescriptorSets[currentFrame];
   case 3:
     return transformDescriptorSets[currentFrame];
   default:
@@ -84,16 +82,66 @@ void Descriptors::createPostDescriptorSets() {
 }
 */
 
-void Descriptors::createObjDescriptorSets() {
-  std::cout << "Creating obj descriggpgjgh" << std::endl;
+std::vector<vk::raii::DescriptorSet> Descriptors::createLightDescriptorSets() {
   std::vector<vk::DescriptorSetLayout> lightLayouts(MAX_FRAMES_IN_FLIGHT, *lightSetLayout);
-  std::vector<vk::DescriptorSetLayout> transformLayouts(MAX_FRAMES_IN_FLIGHT, *transformSetLayout);
   vk::DescriptorSetAllocateInfo lightAllocInfo{
       .descriptorPool = descriptorPool,
       .descriptorSetCount = static_cast<uint32_t>(lightLayouts.size()),
       .pSetLayouts = lightLayouts.data()
 
   };
+
+  std::vector<vk::raii::DescriptorSet> dscSets;
+  dscSets = cxt->device.allocateDescriptorSets(lightAllocInfo);
+
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vk::DescriptorBufferInfo pointInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = 0,
+        .range = sizeof(SSBOLight) * MAX_POINT_LIGHTS};
+    vk::DescriptorBufferInfo dirInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = pointInfo.range,
+        .range = sizeof(SSBOLight) * MAX_DIR_LIGHTS};
+    vk::DescriptorBufferInfo spotInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = dirInfo.range + pointInfo.range,
+        .range = sizeof(SSBOLight) * MAX_SPOT_LIGHTS};
+
+    vk::WriteDescriptorSet pointWrite{
+        .dstSet = dscSets.at(i),
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &pointInfo};
+
+    vk::WriteDescriptorSet dirWrite{
+        .dstSet = dscSets.at(i),
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &dirInfo};
+
+    vk::WriteDescriptorSet spotWrite{
+        .dstSet = dscSets.at(i),
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &spotInfo};
+
+    std::vector<vk::WriteDescriptorSet> writes = {pointWrite, dirWrite, spotWrite};
+
+    cxt->device.updateDescriptorSets(writes, {});
+  }
+  return dscSets;
+}
+
+void Descriptors::createObjDescriptorSets() {
+  std::cout << "Creating obj descriggpgjgh" << std::endl;
+  std::vector<vk::DescriptorSetLayout> transformLayouts(MAX_FRAMES_IN_FLIGHT, *transformSetLayout);
 
   vk::DescriptorSetAllocateInfo transformAllocInfo{
       .descriptorPool = descriptorPool,
@@ -102,8 +150,6 @@ void Descriptors::createObjDescriptorSets() {
 
   };
 
-  lightDescriptorSets.clear();
-  lightDescriptorSets = cxt->device.allocateDescriptorSets(lightAllocInfo);
   transformDescriptorSets.clear();
   transformDescriptorSets = cxt->device.allocateDescriptorSets(transformAllocInfo);
 
@@ -121,30 +167,6 @@ void Descriptors::createObjDescriptorSets() {
         .offset = dirInfo.range + pointInfo.range,
         .range = sizeof(SSBOLight) * MAX_SPOT_LIGHTS};
 
-    vk::WriteDescriptorSet pointWrite{
-        .dstSet = lightDescriptorSets.at(i),
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eStorageBuffer,
-        .pBufferInfo = &pointInfo};
-
-    vk::WriteDescriptorSet dirWrite{
-        .dstSet = lightDescriptorSets.at(i),
-        .dstBinding = 1,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eStorageBuffer,
-        .pBufferInfo = &dirInfo};
-
-    vk::WriteDescriptorSet spotWrite{
-        .dstSet = lightDescriptorSets.at(i),
-        .dstBinding = 2,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eStorageBuffer,
-        .pBufferInfo = &spotInfo};
-
     vk::DescriptorBufferInfo transformInfo{
         .buffer = buf->SSBOs.at(i),
         .offset = pointInfo.range + dirInfo.range + spotInfo.range,
@@ -160,11 +182,10 @@ void Descriptors::createObjDescriptorSets() {
 
     };
 
-    std::vector<vk::WriteDescriptorSet> writes = {pointWrite, dirWrite, spotWrite, transformWrite};
+    std::vector<vk::WriteDescriptorSet> writes = {transformWrite};
 
     cxt->device.updateDescriptorSets(writes, {});
   }
-  std::cout << "wthelly" << std::endl;
 }
 
 void Descriptors::createObjectDescriptorSetLayout() {

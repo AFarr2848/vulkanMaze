@@ -103,7 +103,7 @@ void RenderPass::drawScreen(vk::raii::CommandBuffer &cmd, uint32_t currentFrame)
       if (currentPipeline->usesSet(0))
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
       if (currentPipeline->usesSet(2))
-        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *dsc->getSet(2, currentFrame), nullptr);
+        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *lights->dscSets[currentFrame], nullptr);
       if (currentPipeline->usesSet(3))
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *dsc->getSet(3, currentFrame), nullptr);
     }

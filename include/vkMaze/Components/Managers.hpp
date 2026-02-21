@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <unordered_map>
+#include <vulkan/vulkan_raii.hpp>
 
 class Material;
 class VulkanContext;
@@ -58,6 +59,7 @@ public:
   glm::ivec3 getLightNums();
   uint32_t getSize();
   std::unordered_map<std::string, SSBOLight> lights;
+  std::vector<vk::raii::DescriptorSet> dscSets;
 };
 
 class ShaderResourceManager {

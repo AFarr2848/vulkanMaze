@@ -317,6 +317,8 @@ private:
     renderPass->init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
     std::cout << "renderPass init complete" << std::endl;
     renderPass->createGlobalDscSets();
+
+    lights.dscSets = dsc->createLightDescriptorSets();
   }
 
   void mouseMoved(float xoffset, float yoffset) override {

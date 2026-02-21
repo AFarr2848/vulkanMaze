@@ -1,4 +1,5 @@
 #pragma once
+#include <vulkan/vulkan_raii.hpp>
 class VulkanContext;
 class Buffers;
 
@@ -16,7 +17,6 @@ public:
   vk::raii::DescriptorSetLayout transformSetLayout = nullptr;
   vk::raii::DescriptorSetLayout ppSetLayout = nullptr;
 
-  std::vector<vk::raii::DescriptorSet> lightDescriptorSets;
   std::vector<vk::raii::DescriptorSet> transformDescriptorSets;
   std::vector<vk::raii::DescriptorSet> ppDescriptorSets;
 
@@ -24,6 +24,7 @@ public:
   void createDescriptorPool();
   void createMaterialDescriptorSetLayout();
   void createObjectDescriptorSetLayout();
+  std::vector<vk::raii::DescriptorSet> createLightDescriptorSets();
   vk::raii::DescriptorSet createMaterialDescriptorSet(vk::ImageView imageView, vk::Sampler sampler);
   void createObjDescriptorSets();
   vk::raii::DescriptorSet &getSet(uint32_t setNum, uint32_t currentFrame);
