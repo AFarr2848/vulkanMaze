@@ -1,3 +1,4 @@
+#include <cstdint>
 #define GLFW_INCLUDE_VULKAN // REQUIRED only for GLFW CreateWindowSurface.
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -148,7 +149,7 @@ void VulkanEngine::drawFrame() {
     if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || win->framebufferResized) {
       win->framebufferResized = false;
       std::cout << "FRAMEBUFFER RESIZED" << std::endl;
-      swp->recreateSwapChain();
+      changeResolution();
     } else if (result != vk::Result::eSuccess) {
       throw std::runtime_error("failed to present swap chain image!");
     }
@@ -190,7 +191,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
       vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, // dstAccessMask
       vk::ImageAspectFlagBits::eDepth                                                                   // dstStage
   );
-  renderPass->record(frames->commandBuffers[currentFrame], currentFrame, swp->swapChainImageViews[imageIndex], img->depthImageView);
+  drawScreen(imageIndex);
 
   // After rendering, transition the swapchain image to PRESENT_SRC
   img->transition_image_layout(
@@ -238,12 +239,14 @@ void VulkanEngine::initVulkan() {
   dsc->createGlobalDescriptorSetLayout();
   dsc->createMaterialDescriptorSetLayout();
   dsc->createObjectDescriptorSetLayout();
+  dsc->createPostSetLayout();
   std::cout << "Created escriptor set layouts" << std::endl;
   createPipelines();
   std::cout << "Pipeline created" << std::endl;
   frames->createCommandPool();
   std::cout << "Command pool created" << std::endl;
   img->createDepthResources();
+  img->createColorResources();
   std::cout << "Making shapes..." << std::endl;
   makeShapes();
   buf->createVertexBuffer();
@@ -255,7 +258,6 @@ void VulkanEngine::initVulkan() {
   std::printf("Creating descriptor pool...\n");
   dsc->createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
-  dsc->createObjDescriptorSets();
 
   std::printf("Creating renderpass descriptor sets...\n");
   createDescriptorSets();
@@ -283,7 +285,7 @@ Window VulkanEngine::getWindow() {
   return *win;
 }
 
-void VulkanEngine::drawScreen() {};
+void VulkanEngine::drawScreen(uint32_t) {};
 void VulkanEngine::mouseMoved(float, float) {};
 void VulkanEngine::updateCameraTransforms(GlobalUBO &) {};
 void VulkanEngine::updateLights(std::vector<SSBOLight> &) {};
@@ -291,6 +293,7 @@ void VulkanEngine::updateTransforms(std::vector<glm::mat4> &) {};
 void VulkanEngine::processInput(GLFWwindow *) {};
 void VulkanEngine::createPipelines() {};
 void VulkanEngine::makeShapes() {};
+void VulkanEngine::changeResolution() {};
 void VulkanEngine::makeMaterials() {};
 void VulkanEngine::createDescriptorSets() {};
 std::vector<Vertex> VulkanEngine::getVertices() { return {}; };

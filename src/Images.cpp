@@ -3,6 +3,9 @@
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
+#include "vulkan/vulkan.hpp"
+#include <vector>
+#include <vulkan/vulkan_raii.hpp>
 
 vk::raii::ImageView Images::createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer, uint32_t layerCount) {
   vk::ImageViewCreateInfo viewInfo{.image = image, .viewType = vk::ImageViewType::e2D, .format = format, .subresourceRange = {flags, 0, 1, layer, layerCount}};
@@ -16,10 +19,34 @@ void Images::createDepthResources() {
 }
 
 void Images::createColorResources() {
+  colorImages.clear();
+  colorImageMemory.clear();
+  colorImageViews.clear();
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
-    createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, colorImages[i], colorImageMemory[i]);
+    vk::raii::Image image = nullptr;
+    vk::raii::DeviceMemory imageMem = nullptr;
+    vk::Format colorFormat = swp->swapChainSurfaceFormat.format;
+    createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, image, imageMem);
+    colorImages.push_back(std::move(image));
+    colorImageMemory.push_back(std::move(imageMem));
+    colorImageViews.push_back(createImageView(colorImages[i], colorFormat, vk::ImageAspectFlagBits::eColor));
   }
+
+  vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
+  vk::SamplerCreateInfo samplerInfo{
+      .magFilter = vk::Filter::eLinear,
+      .minFilter = vk::Filter::eLinear,
+      .mipmapMode = vk::SamplerMipmapMode::eLinear,
+      .addressModeU = vk::SamplerAddressMode::eRepeat,
+      .addressModeV = vk::SamplerAddressMode::eRepeat,
+      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .mipLodBias = 0.0f,
+      .anisotropyEnable = vk::True,
+      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      .compareEnable = vk::False,
+      .compareOp = vk::CompareOp::eAlways};
+
+  colorImageSampler = cxt->device.createSampler(samplerInfo);
 }
 
 vk::Format Images::findDepthFormat() {

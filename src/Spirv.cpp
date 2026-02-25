@@ -67,8 +67,9 @@ void SpirvReflectPipeline::createSetLayouts() {
 void SpirvReflectPipeline::makePipelineLayout(vk::raii::PipelineLayout &layout) {
   std::vector<vk::DescriptorSetLayout> rawLayouts;
   rawLayouts.reserve(layouts.size());
-  for (auto &l : layouts)
+  for (auto &l : layouts) {
     rawLayouts.push_back(*l);
+  }
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
       .setLayoutCount = static_cast<uint32_t>(rawLayouts.size()),
@@ -170,6 +171,7 @@ void SpirvReflectPipeline::getBindingInfo(SpvReflectShaderModule &module, vk::Sh
 
       bindings.at(setNumber).push_back(vkLayout);
       names.at(setNumber).push_back(spvBinding->name);
+      std::cout << "Descriptor of type " << vk::to_string(vkLayout.descriptorType) << " at " << i << ", " << j << std::endl;
     }
   }
 }

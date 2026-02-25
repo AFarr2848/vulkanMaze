@@ -25,6 +25,7 @@ add_executable(VulkanTest
   src/Managers.cpp
   src/Spirv.cpp
   src/RenderPass.cpp
+  src/PostProcessingPass.cpp
   include/spirv-reflect/spirv_reflect.cpp
 )
 
@@ -78,6 +79,8 @@ set(SHADER_SOURCES
     ${SHADER_DIR}/fragPhong.slang
     ${SHADER_DIR}/fragUnlit.slang
     ${SHADER_DIR}/vertBasic.slang
+    ${SHADER_DIR}/post/fragBasic.slang
+    ${SHADER_DIR}/post/vertPost.slang
 )
 
 set(SHADER_BINARIES "")

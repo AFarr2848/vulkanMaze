@@ -16,6 +16,7 @@ public:
   std::vector<vk::raii::Image> colorImages;
   std::vector<vk::raii::DeviceMemory> colorImageMemory;
   std::vector<vk::raii::ImageView> colorImageViews;
+  vk::raii::Sampler colorImageSampler = nullptr;
 
   vk::raii::Image depthImage = nullptr;
   vk::raii::DeviceMemory depthImageMemory = nullptr;

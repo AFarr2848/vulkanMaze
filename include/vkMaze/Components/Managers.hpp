@@ -45,6 +45,7 @@ public:
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
   std::vector<glm::mat4> transforms;
+  std::vector<vk::raii::DescriptorSet> dscSets;
 
 private:
   std::unordered_map<std::string, Shape> shapes;

@@ -50,7 +50,7 @@ vk::SurfaceFormatKHR Swapchain::chooseSwapSurfaceFormat(const std::vector<vk::Su
   assert(!availableFormats.empty());
   const auto formatIt = std::ranges::find_if(
       availableFormats,
-      [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
+      [](const auto &format) { return format.format == vk::Format::eR8G8B8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
   return formatIt != availableFormats.end() ? *formatIt : availableFormats[0];
 }
 
@@ -84,6 +84,7 @@ void Swapchain::recreateSwapChain() {
   createSwapChain();
   createImageViews();
   img->createDepthResources();
+  img->createColorResources();
 }
 
 void Swapchain::cleanupSwapChain() {

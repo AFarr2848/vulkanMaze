@@ -14,7 +14,7 @@ Sampler2D albedo;
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
   // return float4(float3(phong), 1.0);
-  return float4(albedo.Sample(inVert.uv).xyz, 1.0);
+   return float4(albedo.Sample(inVert.uv).xyz, 1.0);
   // return float4(inVert.norm / 2 + 0.5, 1.0);
 }
 

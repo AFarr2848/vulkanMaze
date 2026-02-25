@@ -1,12 +1,26 @@
-float2 positions[3] = float2[](
-    float2(-1.0, -1.0),
-    float2(3.0, -1.0),
-    float2(-1.0, 3.0));
+struct VSOutput {
+  float4 position : SV_Position;
+  float2 uv;
+};
 
-uint vid : SV_VertexID;
 [shader("vertex")]
-float4 vertMain() : SV_Position {
+VSOutput vertMain(uint32_t vertexID: SV_VertexID) {
+  float2 positions[3] =
+      {
+        float2(-1.0, -1.0),
+        float2(3.0, -1.0),
+        float2(-1.0, 3.0)
+      };
 
-  return float4(positions[vid], 0.0, 1.0);
+  float2 uvs[3] =
+      {
+        float2(0.0, 0.0),
+        float2(2.0, 0.0),
+        float2(0.0, 2.0)
+      };
+
+  VSOutput output;
+  output.position = float4(positions[vertexID], 0.0, 1.0);
+  output.uv = uvs[vertexID];
+  return output;
 }
-

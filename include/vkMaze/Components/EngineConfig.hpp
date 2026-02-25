@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -21,6 +22,7 @@ inline const std::vector<const char *> validationLayers = {
 
 const std::vector<const char *> requiredDeviceExtension = {
     vk::KHRSwapchainExtensionName,
+    vk::KHRShaderDrawParametersExtensionName,
     vk::KHRSpirv14ExtensionName,
     vk::KHRSynchronization2ExtensionName,
     vk::KHRCreateRenderpass2ExtensionName

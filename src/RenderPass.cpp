@@ -66,7 +66,7 @@ void RenderPass::record(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, vk::r
       .imageView = depthView,
       .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eDontCare,
+      .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue = clearDepth
 
   };
@@ -105,7 +105,7 @@ void RenderPass::drawScreen(vk::raii::CommandBuffer &cmd, uint32_t currentFrame)
       if (currentPipeline->usesSet(2))
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *lights->dscSets[currentFrame], nullptr);
       if (currentPipeline->usesSet(3))
-        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *dsc->getSet(3, currentFrame), nullptr);
+        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *shapes->dscSets[currentFrame], nullptr);
     }
     if (s->material != currentMaterial && currentPipeline->usesSet(1)) {
       cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);

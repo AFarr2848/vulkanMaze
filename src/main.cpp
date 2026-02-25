@@ -4,6 +4,7 @@
 #include "vkMaze/Components/Buffers.hpp"
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/Descriptors.hpp"
+#include "vkMaze/Objects/PostProcessingPass.hpp"
 #include "vulkan/vulkan.hpp"
 #include <vkMaze/Components/VulkanEngine.hpp>
 #include <vkMaze/Objects/Camera.hpp>
@@ -31,6 +32,7 @@ Buffers buf;
 Images img;
 Descriptors dsc;
 RenderPass renderPass;
+PostProcessingPass postPass;
 
 class VKMaze : public VulkanEngine {
 public:
@@ -144,6 +146,7 @@ public:
         1.0f
 
     );
+
     /*
         lights.addSpotLight(
             "flashlight",
@@ -160,6 +163,33 @@ public:
     // Cube lightCube(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f)), glm::vec3(2.25f, 2.25f, 2.25f)));
   }
 
+  void drawScreen(uint32_t imageIndex) override {
+    img->transition_image_layout(
+        img->colorImages[currentFrame],
+        vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::AccessFlagBits2::eShaderRead,            // srcAccessMask (no need to wait for previous operations)
+        vk::AccessFlagBits2::eColorAttachmentWrite,  // dstAccessMask
+        vk::PipelineStageFlagBits2::eFragmentShader, // srcStage
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::ImageAspectFlagBits::eColor // dstStage
+    );
+    renderPass.record(frames->commandBuffers[currentFrame], currentFrame, img->colorImageViews[currentFrame], img->depthImageView);
+
+    img->transition_image_layout(
+        img->colorImages[currentFrame],
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask (no need to wait for previous operations)
+        vk::AccessFlagBits2::eShaderRead,                   // dstAccessMask
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
+        vk::PipelineStageFlagBits2::eFragmentShader,
+        vk::ImageAspectFlagBits::eColor // dstStage
+    );
+
+    postPass.record(frames->commandBuffers[currentFrame], currentFrame, swp->swapChainImageViews[imageIndex], img->depthImageView);
+  }
+
   void makeMaterials() override {
     materials.initMaterials(*cxt, *img, *frames, *dsc, *buf);
   }
@@ -171,6 +201,7 @@ private:
   Pipeline pipelinePhong;
   Pipeline pipelineUnlit;
   Pipeline pipelineWireframe;
+  Pipeline ppPipeline;
   std::vector<Pipeline *> pipelines = {&pipelinePhong, &pipelineUnlit, &pipelineWireframe};
 
   void createPipelines() override {
@@ -212,6 +243,13 @@ private:
         .cullModeFlags = vk::CullModeFlagBits::eBack,
 
     });
+    std::cout << "\n\ncreating pp pipeline" << std::endl;
+    ppPipeline.init(*cxt, *dsc, *swp, *img);
+    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBasic.spv",
+                               .vertPath = "build/shaders/vertPost.spv",
+                               .topology = vk::PrimitiveTopology::eTriangleList,
+                               .polygonMode = vk::PolygonMode::eFill,
+                               .cullModeFlags = vk::CullModeFlagBits::eNone});
   }
 
   std::vector<Vertex> getVertices() override {
@@ -233,7 +271,7 @@ private:
     lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
     lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
     // lights.get("flashlight").pos = camera.Position;
-    // lights.get("flashlight").dir = camera.Front;
+    // lights.get("flashlight").dir =26AFarrar43 camera.Front;
 
     for (auto &pair : lights.lights) {
       lightVec.push_back(pair.second);
@@ -253,71 +291,18 @@ private:
     return shapes.indices;
   }
 
-  void drawScreen() override {
-    vk::raii::CommandBuffer &buf = frames->commandBuffers[currentFrame];
-    std::vector<Shape *> drawShapes = shapes.getDrawOrder();
-    Material *currentMaterial = nullptr;
-    Pipeline *currentPipeline = nullptr;
-
-    for (Shape *s : drawShapes) {
-
-      if (s->pipeline != currentPipeline) {
-        currentPipeline = s->pipeline;
-        buf.bindPipeline(vk::PipelineBindPoint::eGraphics, currentPipeline->graphicsPipeline);
-        if (currentPipeline->usesSet(0))
-          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 0, *dsc->getSet(0, currentFrame), nullptr);
-        if (currentPipeline->usesSet(2))
-          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *dsc->getSet(2, currentFrame), nullptr);
-        if (currentPipeline->usesSet(3))
-          buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *dsc->getSet(3, currentFrame), nullptr);
-      }
-      if (s->material != currentMaterial && currentPipeline->usesSet(1)) {
-        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
-        currentMaterial = s->material;
-      }
-
-      if (s->pipeline->hasPushConstants) {
-        PushConstant pc = PushConstant();
-        pc.lightNums = lights.getLightNums();
-        pc.transformIndex = s->transformIndex;
-        const auto *pcBytes = reinterpret_cast<const uint8_t *>(&pc);
-        buf.pushConstants(s->pipeline->pipelineLayout,
-                          s->pipeline->pcRange.stageFlags,
-                          s->pipeline->pcRange.offset,
-                          vk::ArrayProxy<const uint8_t>(s->pipeline->pcRange.size, pcBytes));
-      }
-
-      buf.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
-    }
-
-    /*
-        for (Shape *s : drawShapes) {
-          PushConstant pc = PushConstant();
-          pc.lightNums = lights.getLightNums();
-          pc.transformIndex = s->transformIndex;
-          buf.pushConstants(s->pipeline->pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, vk::ArrayProxy<const PushConstant>(pc));
-          if (s->pipeline != currentPipeline) {
-            buf.bindPipeline(vk::PipelineBindPoint::eGraphics, s->pipeline->graphicsPipeline);
-            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 0, *dsc->descriptorSets[currentFrame], nullptr);
-            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 2, *dsc->lightDescriptorSets[currentFrame], nullptr);
-            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 3, *dsc->transformDescriptorSets[currentFrame], nullptr);
-            currentPipeline = s->pipeline;
-          }
-          if (s->material != currentMaterial) {
-            buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
-            currentMaterial = s->material;
-          }
-          buf.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
-        }
-      */
-  }
-
   void createDescriptorSets() override {
     std::cout << "inittttttt" << std::endl;
-    renderPass->init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
+    renderPass.init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
+    postPass.init({.pipeline = ppPipeline}, *cxt, *dsc, *swp, *buf, *img);
     std::cout << "renderPass init complete" << std::endl;
-    renderPass->createGlobalDscSets();
+    renderPass.createGlobalDscSets();
+    std::cout << "renderPass dsc sets complete" << std::endl;
 
+    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
+    std::cout << "ppp dsc sets complete" << std::endl;
+
+    shapes.dscSets = dsc->createTransformDescriptorSets();
     lights.dscSets = dsc->createLightDescriptorSets();
   }
 
@@ -343,13 +328,18 @@ private:
     if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
       glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   }
+
+  void changeResolution() override {
+    swp->recreateSwapChain();
+    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
+  }
 };
 
 int main() {
   try {
     VKMaze app;
 
-    app.init(win, cxt, swp, frames, img, dsc, buf, renderPass);
+    app.init(win, cxt, swp, frames, img, dsc, buf);
     app.run();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

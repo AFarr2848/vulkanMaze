@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <glm/fwd.hpp>
 class VulkanContext;
 class Swapchain;
@@ -21,7 +22,7 @@ public:
   int frameCount = 0;
   uint32_t semaphoreIndex = 0;
 
-  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf, RenderPass &renderPass) {
+  void init(Window &win, VulkanContext &cxt, Swapchain &swp, FrameData &frames, Images &img, Descriptors &dsc, Buffers &buf) {
     this->win = &win;
     this->cxt = &cxt;
     this->swp = &swp;
@@ -29,7 +30,6 @@ public:
     this->img = &img;
     this->dsc = &dsc;
     this->buf = &buf;
-    this->renderPass = &renderPass;
   }
 
   void run();
@@ -45,7 +45,7 @@ public:
   virtual std::vector<uint32_t> getIndices();
 
   virtual void createPipelines();
-  virtual void drawScreen();
+  virtual void drawScreen(uint32_t imageIndex);
   virtual void mouseMoved(float xoffset, float yoffset);
   virtual void updateCameraTransforms(GlobalUBO &ubo);
   virtual void processInput(GLFWwindow *window);
@@ -54,6 +54,7 @@ public:
   virtual void updateLights(std::vector<SSBOLight> &);
   virtual void updateTransforms(std::vector<glm::mat4> &);
   virtual void createDescriptorSets();
+  virtual void changeResolution();
 
 protected:
   void updateGlobalUniformBuffer(uint32_t currentFrame);
@@ -66,6 +67,5 @@ protected:
   Buffers *buf;
   Images *img;
   Descriptors *dsc;
-  RenderPass *renderPass;
   int32_t currentFrame = 0;
 };

@@ -7,7 +7,6 @@
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vulkan/vulkan.hpp"
-#include <iostream>
 #include <vulkan/vulkan_to_string.hpp>
 
 void Pipeline::createPipeline(const PipelineDsc &dsc) {
