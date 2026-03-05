@@ -4,6 +4,7 @@
 #include "vkMaze/Components/Swapchain.hpp"
 #include "vkMaze/Components/FrameData.hpp"
 #include "vulkan/vulkan.hpp"
+#include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
@@ -19,17 +20,17 @@ void Images::createDepthResources() {
 }
 
 void Images::createColorResources() {
-  colorImages.clear();
-  colorImageMemory.clear();
-  colorImageViews.clear();
+  postImages.clear();
+  postImageMemory.clear();
+  postImageViews.clear();
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vk::raii::Image image = nullptr;
     vk::raii::DeviceMemory imageMem = nullptr;
     vk::Format colorFormat = swp->swapChainSurfaceFormat.format;
     createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, image, imageMem);
-    colorImages.push_back(std::move(image));
-    colorImageMemory.push_back(std::move(imageMem));
-    colorImageViews.push_back(createImageView(colorImages[i], colorFormat, vk::ImageAspectFlagBits::eColor));
+    postImages.push_back(std::move(image));
+    postImageMemory.push_back(std::move(imageMem));
+    postImageViews.push_back(createImageView(postImages[i], colorFormat, vk::ImageAspectFlagBits::eColor));
   }
 
   vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
@@ -37,16 +38,74 @@ void Images::createColorResources() {
       .magFilter = vk::Filter::eLinear,
       .minFilter = vk::Filter::eLinear,
       .mipmapMode = vk::SamplerMipmapMode::eLinear,
-      .addressModeU = vk::SamplerAddressMode::eRepeat,
-      .addressModeV = vk::SamplerAddressMode::eRepeat,
-      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeW = vk::SamplerAddressMode::eClampToEdge,
       .mipLodBias = 0.0f,
       .anisotropyEnable = vk::True,
       .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
       .compareEnable = vk::False,
       .compareOp = vk::CompareOp::eAlways};
 
-  colorImageSampler = cxt->device.createSampler(samplerInfo);
+  postImageSampler = cxt->device.createSampler(samplerInfo);
+}
+
+vk::raii::ImageView &Images::getDataImageView(std::string name) {
+  for (int i = 0; i < dataImages.size(); i++) {
+    if (dataImages[i].name == name)
+      return dataImages[i].view;
+  }
+  for (int i = 0; i < dataImages.size(); i++) {
+    if (dataImages[i].name.empty())
+      dataImages[i].name = name;
+    return dataImages[i].view;
+  }
+  throw std::runtime_error("Out of data images!!!");
+}
+
+vk::raii::ImageView &Images::getNextPostView() {
+  currentPostView %= 2;
+  return postImageViews.at(currentPostView);
+}
+vk::raii::ImageView &Images::getCurrentPostView() {
+  currentPostView %= 2;
+  return postImageViews.at(currentPostView);
+}
+
+void Images::createPostDataResources() {
+  dataImages.clear();
+  for (int i = 0; i < MAX_DATA_IMAGES; i++) {
+    vk::raii::Image image = nullptr;
+    vk::raii::DeviceMemory imageMem = nullptr;
+    vk::Format colorFormat = swp->swapChainSurfaceFormat.format;
+    createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, image, imageMem);
+    vk::raii::ImageView view = createImageView(image, colorFormat, vk::ImageAspectFlagBits::eColor);
+    dataImages.push_back(
+
+        {
+
+            .image = std::move(image),
+            .view = std::move(view),
+            .imageMemory = std::move(imageMem),
+            .name = ""});
+  }
+
+  vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
+  vk::SamplerCreateInfo samplerInfo{
+      .magFilter = vk::Filter::eLinear,
+      .minFilter = vk::Filter::eLinear,
+      .mipmapMode = vk::SamplerMipmapMode::eLinear,
+      .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeW = vk::SamplerAddressMode::eClampToEdge,
+      .mipLodBias = 0.0f,
+      .anisotropyEnable = vk::True,
+      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      .compareEnable = vk::False,
+      .compareOp = vk::CompareOp::eAlways
+
+  };
+  dataImageSampler = cxt->device.createSampler(samplerInfo);
 }
 
 vk::Format Images::findDepthFormat() {
@@ -56,6 +115,10 @@ vk::Format Images::findDepthFormat() {
       },
       vk::ImageTiling::eOptimal,
       vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+
+void Images::createImage(vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount) {
+  createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, format, tiling, usage, properties, image, imageMemory, layerCount);
 }
 
 void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount) {

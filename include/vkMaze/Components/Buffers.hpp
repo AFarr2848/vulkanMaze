@@ -18,17 +18,12 @@ public:
   vk::raii::Buffer indexBuffer = nullptr;
   vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
-  std::vector<vk::raii::Buffer> globalUBOs;
-  std::vector<vk::raii::DeviceMemory> globalUBOMemory;
-  std::vector<void *> globalUBOMapped;
-
   std::vector<vk::raii::Buffer> SSBOs;
   std::vector<vk::raii::DeviceMemory> SSBOMemory;
   std::vector<void *> SSBOsMapped;
 
   void createVertexBuffer();
   void createIndexBuffer();
-  void createUniformBuffers();
   void createStorageBuffer();
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Buffer &buffer, vk::raii::DeviceMemory &bufferMemory);

@@ -16,8 +16,8 @@
 #include <vkMaze/Components/Swapchain.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-void PostProcessingPass::createPPPDscSets(std::vector<vk::raii::ImageView> &imageViews, vk::raii::Sampler &sampler) {
-  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *dsc->ppSetLayout);
+void PostProcessingPass::createPPPDscSets(vk::DescriptorSetLayout layout, std::vector<vk::raii::ImageView> &imageViews, vk::raii::Sampler &sampler) {
+  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, layout);
   vk::DescriptorSetAllocateInfo allocInfo{
       .descriptorPool = *dsc->descriptorPool,
       .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
@@ -26,6 +26,26 @@ void PostProcessingPass::createPPPDscSets(std::vector<vk::raii::ImageView> &imag
   descriptorSets.clear();
   descriptorSets = cxt->device.allocateDescriptorSets(allocInfo);
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    std::vector<vk::DescriptorImageInfo> imageInfos;
+    std::vector<vk::WriteDescriptorSet> writes;
+    for (ShaderResource &r : pipeline.shaderResources) {
+      imageInfos.push_back({
+
+          .sampler = img->dataImageSampler,
+          .imageView = img->getDataImageView(r.name),
+          .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+
+      });
+      writes.push_back({
+
+          .dstSet = *descriptorSets[i],
+          .dstBinding = r.binding,
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .pImageInfo = &imageInfos.at(imageInfos.size() - 1)
+
+      });
+    }
 
     vk::DescriptorImageInfo imageInfo{
         .sampler = sampler,
@@ -43,12 +63,12 @@ void PostProcessingPass::createPPPDscSets(std::vector<vk::raii::ImageView> &imag
   }
 }
 
-void PostProcessingPass::record(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, vk::raii::ImageView &colorView, vk::raii::ImageView &depthView) {
+void PostProcessingPass::record(vk::raii::CommandBuffer &cmd, uint32_t frameIndex) {
 
   vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
   vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
   vk::RenderingAttachmentInfo attachmentInfo = {
-      .imageView = colorView,
+      .imageView = img->getNextPostView(),
       .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,
@@ -56,7 +76,7 @@ void PostProcessingPass::record(vk::raii::CommandBuffer &cmd, uint32_t frameInde
 
   };
   vk::RenderingAttachmentInfo depthAttachmentInfo = {
-      .imageView = depthView,
+      .imageView = img->depthImageView,
       .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eDontCare,
@@ -84,8 +104,10 @@ void PostProcessingPass::record(vk::raii::CommandBuffer &cmd, uint32_t frameInde
 
 void PostProcessingPass::drawScreen(vk::raii::CommandBuffer &cmd, uint32_t currentFrame) {
 
-  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->graphicsPipeline);
-  if (pipeline->usesSet(0))
-    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
+  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.graphicsPipeline);
+  for (ShaderResource &r : pipeline.shaderResources) {
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.pipelineLayout, r.set, *descriptorSets[currentFrame], nullptr);
+  }
+
   cmd.draw(3, 1, 0, 0);
 }

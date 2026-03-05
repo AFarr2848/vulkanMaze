@@ -32,7 +32,6 @@ Buffers buf;
 Images img;
 Descriptors dsc;
 RenderPass renderPass;
-PostProcessingPass postPass;
 
 class VKMaze : public VulkanEngine {
 public:
@@ -165,7 +164,7 @@ public:
 
   void drawScreen(uint32_t imageIndex) override {
     img->transition_image_layout(
-        img->colorImages[currentFrame],
+        img->postImages[img->currentPostView],
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eColorAttachmentOptimal,
         vk::AccessFlagBits2::eShaderRead,            // srcAccessMask (no need to wait for previous operations)
@@ -174,10 +173,11 @@ public:
         vk::PipelineStageFlagBits2::eColorAttachmentOutput,
         vk::ImageAspectFlagBits::eColor // dstStage
     );
-    renderPass.record(frames->commandBuffers[currentFrame], currentFrame, img->colorImageViews[currentFrame], img->depthImageView);
+    renderPass.record(frames->commandBuffers[currentFrame], currentFrame, img->postImageViews[img->currentPostView], img->depthImageView);
 
     img->transition_image_layout(
-        img->colorImages[currentFrame],
+
+        img->postImages[img->currentPostView],
         vk::ImageLayout::eColorAttachmentOptimal,
         vk::ImageLayout::eShaderReadOnlyOptimal,
         vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask (no need to wait for previous operations)
@@ -187,7 +187,9 @@ public:
         vk::ImageAspectFlagBits::eColor // dstStage
     );
 
-    postPass.record(frames->commandBuffers[currentFrame], currentFrame, swp->swapChainImageViews[imageIndex], img->depthImageView);
+    for (PostProcessingPass &p : PPPasses) {
+      p.record(frames->commandBuffers[currentFrame], currentFrame);
+    }
   }
 
   void makeMaterials() override {
@@ -203,15 +205,9 @@ private:
   Pipeline pipelineWireframe;
   Pipeline ppPipeline;
   std::vector<Pipeline *> pipelines = {&pipelinePhong, &pipelineUnlit, &pipelineWireframe};
+  std::vector<PostProcessingPass> PPPasses;
 
   void createPipelines() override {
-    std::vector dscSetLayouts = {
-        *dsc->descriptorSetLayout,
-        *dsc->matSetLayout,
-        *dsc->lightSetLayout,
-        *dsc->transformSetLayout
-
-    };
 
     pipelinePhong.init(*cxt, *dsc, *swp, *img);
     pipelinePhong.createPipeline({
@@ -245,7 +241,7 @@ private:
     });
     std::cout << "\n\ncreating pp pipeline" << std::endl;
     ppPipeline.init(*cxt, *dsc, *swp, *img);
-    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBasic.spv",
+    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBoxBlur.spv",
                                .vertPath = "build/shaders/vertPost.spv",
                                .topology = vk::PrimitiveTopology::eTriangleList,
                                .polygonMode = vk::PolygonMode::eFill,
@@ -294,12 +290,11 @@ private:
   void createDescriptorSets() override {
     std::cout << "inittttttt" << std::endl;
     renderPass.init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
-    postPass.init({.pipeline = ppPipeline}, *cxt, *dsc, *swp, *buf, *img);
-    std::cout << "renderPass init complete" << std::endl;
     renderPass.createGlobalDscSets();
+    std::cout << "renderPass init complete" << std::endl;
     std::cout << "renderPass dsc sets complete" << std::endl;
+    PPPasses.push_back(PostProcessingPass({.fragPath = "build/shaders/fragBoxBlur.spv", .vertPath = "build/shaders/vertPost.spv"}, *cxt, *dsc, *swp, *buf, *img));
 
-    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
     std::cout << "ppp dsc sets complete" << std::endl;
 
     shapes.dscSets = dsc->createTransformDescriptorSets();
@@ -331,7 +326,8 @@ private:
 
   void changeResolution() override {
     swp->recreateSwapChain();
-    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
+    for (PostProcessingPass &p : PPPasses)
+      p.createPPPDscSets(img->postImageViews, img->postImageSampler);
   }
 };
 

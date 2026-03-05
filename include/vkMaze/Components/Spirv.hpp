@@ -13,6 +13,7 @@ public:
   vk::raii::ShaderModule vkFragModule = nullptr;
 
   std::vector<ShaderResource> shaderResources;
+  std::vector<vk::raii::DescriptorSetLayout> layouts;
 
   bool hasPushConstants = false;
   vk::PushConstantRange pcRange;
@@ -28,7 +29,6 @@ private:
 
   std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindings;
   std::vector<std::vector<std::string>> names;
-  std::vector<vk::raii::DescriptorSetLayout> layouts;
   VulkanContext *cxt;
   SpvReflectShaderModule spvFragModule;
   SpvReflectShaderModule spvVertModule;

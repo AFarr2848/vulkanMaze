@@ -10,6 +10,7 @@ constexpr int MAX_POINT_LIGHTS = 32;
 constexpr int MAX_DIR_LIGHTS = 16;
 constexpr int MAX_SPOT_LIGHTS = 16;
 constexpr int MAX_TRANSFORMS = 1024;
+constexpr int MAX_DATA_IMAGES = 16;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;

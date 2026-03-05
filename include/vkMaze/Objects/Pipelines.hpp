@@ -49,6 +49,7 @@ public:
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
   std::vector<ShaderResource> shaderResources;
+  std::vector<vk::raii::DescriptorSetLayout> layouts;
   vk::PushConstantRange pcRange;
   bool hasPushConstants;
 

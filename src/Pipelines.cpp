@@ -80,6 +80,7 @@ void Pipeline::createPipeline(const PipelineDsc &dsc) {
   shaderResources = reflected.shaderResources;
   pcRange = reflected.pcRange;
   hasPushConstants = reflected.hasPushConstants;
+  layouts = std::move(reflected.layouts);
 }
 bool Pipeline::usesSet(uint32_t setNum) {
   for (ShaderResource &s : shaderResources) {

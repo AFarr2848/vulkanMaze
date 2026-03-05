@@ -37,7 +37,7 @@ struct Light {
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
 
-[[vk::binding(0, 3)]]
+[[vk::binding(4, 0)]]
 StructuredBuffer<float4x4> transforms;
 
 [[vk::push_constant]]

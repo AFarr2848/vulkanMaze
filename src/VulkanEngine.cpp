@@ -71,7 +71,7 @@ void VulkanEngine::updateGlobalUniformBuffer(uint32_t currentImage) {
   GlobalUBO ubo{};
   updateCameraTransforms(ubo);
 
-  memcpy(buf->globalUBOMapped[currentImage], &ubo, sizeof(ubo));
+  memcpy(buf->SSBOsMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
@@ -105,10 +105,10 @@ void VulkanEngine::updateStorageBuffer(uint32_t currentImage) {
                 "Lights buffer size should be aligned to 256 bytes");
 
   memcpy(buf->SSBOsMapped[currentImage], pLights.data(), pLights.size() * sizeof(SSBOLight));
-  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + sizeof(SSBOLight) * MAX_POINT_LIGHTS, dLights.data(), dLights.size() * sizeof(SSBOLight));
-  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_POINT_LIGHTS) + (sizeof(SSBOLight) * MAX_DIR_LIGHTS), sLights.data(), sLights.size() * sizeof(SSBOLight));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + sizeof(GlobalUBO) + sizeof(SSBOLight) * MAX_POINT_LIGHTS, dLights.data(), dLights.size() * sizeof(SSBOLight));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + sizeof(GlobalUBO) + (sizeof(SSBOLight) * MAX_POINT_LIGHTS) + (sizeof(SSBOLight) * MAX_DIR_LIGHTS), sLights.data(), sLights.size() * sizeof(SSBOLight));
 
-  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + (sizeof(SSBOLight) * MAX_LIGHTS), transforms.data(), transforms.size() * sizeof(glm::mat4));
+  memcpy(static_cast<char *>(buf->SSBOsMapped[currentImage]) + sizeof(GlobalUBO) + (sizeof(SSBOLight) * MAX_LIGHTS), transforms.data(), transforms.size() * sizeof(glm::mat4));
 }
 
 void VulkanEngine::drawFrame() {
@@ -247,19 +247,17 @@ void VulkanEngine::initVulkan() {
   std::cout << "Command pool created" << std::endl;
   img->createDepthResources();
   img->createColorResources();
+  img->createPostDataResources();
   std::cout << "Making shapes..." << std::endl;
   makeShapes();
   buf->createVertexBuffer();
   std::printf("Creating index buffer...\n");
   buf->createIndexBuffer();
   std::printf("Creating uniform buffers...\n");
-  buf->createUniformBuffers();
   buf->createStorageBuffer();
   std::printf("Creating descriptor pool...\n");
   dsc->createDescriptorPool();
   std::printf("Creating descriptor sets...\n");
-
-  std::printf("Creating renderpass descriptor sets...\n");
   createDescriptorSets();
   std::printf("Creating command buffers...\n");
   frames->createCommandBuffers();

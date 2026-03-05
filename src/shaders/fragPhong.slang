@@ -43,11 +43,11 @@ PushConstant push;
 [[vk::binding(0, 1)]]
 Sampler2D albedo;
 
-[[vk::binding(0, 2)]]
+[[vk::binding(1, 0)]]
 StructuredBuffer<Light> pLights;
-[[vk::binding(1, 2)]]
+[[vk::binding(2, 0)]]
 StructuredBuffer<Light> dLights;
-[[vk::binding(2, 2)]]
+[[vk::binding(3, 0)]]
 StructuredBuffer<Light> sLights;
 
 [shader("fragment")]
