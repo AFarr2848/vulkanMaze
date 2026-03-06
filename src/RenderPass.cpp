@@ -15,7 +15,7 @@
 
 void RenderPass::createGlobalDscSets() {
 
-  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *dsc->descriptorSetLayout);
+  std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *dsc->globalSetLayout);
 
   vk::DescriptorSetAllocateInfo allocInfo{
       .descriptorPool = dsc->descriptorPool,
@@ -35,7 +35,7 @@ void RenderPass::createGlobalDscSets() {
     };
 
     vk::WriteDescriptorSet camWrite{
-        .dstSet = descriptorSets[i],
+        .dstSet = descriptorSets.at(i),
         .dstBinding = 0,
         .dstArrayElement = 0,
         .descriptorCount = 1,
@@ -43,8 +43,22 @@ void RenderPass::createGlobalDscSets() {
         .pBufferInfo = &camInfo
 
     };
+    vk::DescriptorBufferInfo transformInfo{
+        .buffer = buf->SSBOs.at(i),
+        .offset = sizeof(SSBOLight) * (MAX_DIR_LIGHTS + MAX_SPOT_LIGHTS + MAX_POINT_LIGHTS),
+        .range = sizeof(glm::mat4) * MAX_TRANSFORMS};
 
-    std::vector<vk::WriteDescriptorSet> writes = {camWrite};
+    vk::WriteDescriptorSet transformWrite{
+        .dstSet = descriptorSets.at(i),
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &transformInfo
+
+    };
+
+    std::vector<vk::WriteDescriptorSet> writes = {camWrite, transformWrite};
 
     cxt->device.updateDescriptorSets(writes, {});
   }
@@ -104,8 +118,6 @@ void RenderPass::drawScreen(vk::raii::CommandBuffer &cmd, uint32_t currentFrame)
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
       if (currentPipeline->usesSet(2))
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *lights->dscSets[currentFrame], nullptr);
-      if (currentPipeline->usesSet(3))
-        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 3, *shapes->dscSets[currentFrame], nullptr);
     }
     if (s->material != currentMaterial && currentPipeline->usesSet(1)) {
       cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);

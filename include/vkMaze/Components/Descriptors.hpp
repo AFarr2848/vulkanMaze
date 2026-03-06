@@ -11,10 +11,9 @@ public:
     this->buf = &buf;
   }
   vk::raii::DescriptorPool descriptorPool = nullptr;
-  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
+  vk::raii::DescriptorSetLayout globalSetLayout = nullptr;
   vk::raii::DescriptorSetLayout matSetLayout = nullptr;
   vk::raii::DescriptorSetLayout lightSetLayout = nullptr;
-  vk::raii::DescriptorSetLayout transformSetLayout = nullptr;
   vk::raii::DescriptorSetLayout ppSetLayout = nullptr;
 
   std::vector<vk::raii::DescriptorSet> ppDescriptorSets;

@@ -205,13 +205,6 @@ private:
   std::vector<Pipeline *> pipelines = {&pipelinePhong, &pipelineUnlit, &pipelineWireframe};
 
   void createPipelines() override {
-    std::vector dscSetLayouts = {
-        *dsc->descriptorSetLayout,
-        *dsc->matSetLayout,
-        *dsc->lightSetLayout,
-        *dsc->transformSetLayout
-
-    };
 
     pipelinePhong.init(*cxt, *dsc, *swp, *img);
     pipelinePhong.createPipeline({
@@ -302,7 +295,6 @@ private:
     postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
     std::cout << "ppp dsc sets complete" << std::endl;
 
-    shapes.dscSets = dsc->createTransformDescriptorSets();
     lights.dscSets = dsc->createLightDescriptorSets();
   }
 

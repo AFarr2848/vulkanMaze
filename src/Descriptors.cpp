@@ -63,42 +63,6 @@ std::vector<vk::raii::DescriptorSet> Descriptors::createLightDescriptorSets() {
   return dscSets;
 }
 
-std::vector<vk::raii::DescriptorSet> Descriptors::createTransformDescriptorSets() {
-  std::vector<vk::DescriptorSetLayout> transformLayouts(MAX_FRAMES_IN_FLIGHT, *transformSetLayout);
-
-  vk::DescriptorSetAllocateInfo transformAllocInfo{
-      .descriptorPool = descriptorPool,
-      .descriptorSetCount = static_cast<uint32_t>(transformLayouts.size()),
-      .pSetLayouts = transformLayouts.data()
-
-  };
-
-  std::vector<vk::raii::DescriptorSet> dscSets;
-  dscSets = cxt->device.allocateDescriptorSets(transformAllocInfo);
-
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::DescriptorBufferInfo transformInfo{
-        .buffer = buf->SSBOs.at(i),
-        .offset = sizeof(SSBOLight) * (MAX_DIR_LIGHTS + MAX_SPOT_LIGHTS + MAX_POINT_LIGHTS),
-        .range = sizeof(glm::mat4) * MAX_TRANSFORMS};
-
-    vk::WriteDescriptorSet transformWrite{
-        .dstSet = dscSets.at(i),
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eStorageBuffer,
-        .pBufferInfo = &transformInfo
-
-    };
-
-    std::vector<vk::WriteDescriptorSet> writes = {transformWrite};
-
-    cxt->device.updateDescriptorSets(writes, {});
-  }
-  return dscSets;
-}
-
 void Descriptors::createObjectDescriptorSetLayout() {
   vk::DescriptorSetLayoutBinding pointLayoutBinding{
       .binding = 0,
@@ -125,17 +89,8 @@ void Descriptors::createObjectDescriptorSetLayout() {
       .pImmutableSamplers = nullptr
 
   };
-  vk::DescriptorSetLayoutBinding transformLayoutBinding{
-      .binding = 0,
-      .descriptorType = vk::DescriptorType::eStorageBuffer,
-      .descriptorCount = 1,
-      .stageFlags = vk::ShaderStageFlagBits::eVertex,
-      .pImmutableSamplers = nullptr
-
-  };
 
   std::vector<vk::DescriptorSetLayoutBinding> lightLayouts = {pointLayoutBinding, dirLayoutBinding, spotLayoutBinding};
-  std::vector<vk::DescriptorSetLayoutBinding> transformLayouts = {transformLayoutBinding};
 
   vk::DescriptorSetLayoutCreateInfo lightLayoutInfo{
       .flags = {},
@@ -143,15 +98,8 @@ void Descriptors::createObjectDescriptorSetLayout() {
       .pBindings = lightLayouts.data()
 
   };
-  vk::DescriptorSetLayoutCreateInfo transformLayoutInfo{
-      .flags = {},
-      .bindingCount = 1,
-      .pBindings = transformLayouts.data()
-
-  };
 
   lightSetLayout = vk::raii::DescriptorSetLayout(cxt->device, lightLayoutInfo);
-  transformSetLayout = vk::raii::DescriptorSetLayout(cxt->device, transformLayoutInfo);
 }
 
 void Descriptors::createPostSetLayout() {
@@ -180,17 +128,25 @@ void Descriptors::createGlobalDescriptorSetLayout() {
       .pImmutableSamplers = nullptr
 
   };
+  vk::DescriptorSetLayoutBinding transformLayoutBinding{
+      .binding = 1,
+      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .pImmutableSamplers = nullptr
 
-  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding};
+  };
+
+  std::vector<vk::DescriptorSetLayoutBinding> layouts = {uboLayoutBinding, transformLayoutBinding};
 
   vk::DescriptorSetLayoutCreateInfo layoutInfo{
       .flags = {},
-      .bindingCount = 1,
+      .bindingCount = static_cast<uint32_t>(layouts.size()),
       .pBindings = layouts.data()
 
   };
 
-  descriptorSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
+  globalSetLayout = vk::raii::DescriptorSetLayout(cxt->device, layoutInfo);
 }
 
 void Descriptors::createMaterialDescriptorSetLayout() {
