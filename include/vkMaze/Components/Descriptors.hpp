@@ -16,17 +16,13 @@ public:
   vk::raii::DescriptorSetLayout lightSetLayout = nullptr;
   vk::raii::DescriptorSetLayout ppSetLayout = nullptr;
 
-  std::vector<vk::raii::DescriptorSet> ppDescriptorSets;
-
   void createGlobalDescriptorSetLayout();
   void createDescriptorPool();
   void createMaterialDescriptorSetLayout();
   void createObjectDescriptorSetLayout();
   void createPostSetLayout();
   std::vector<vk::raii::DescriptorSet> createLightDescriptorSets();
-  std::vector<vk::raii::DescriptorSet> createTransformDescriptorSets();
   vk::raii::DescriptorSet createMaterialDescriptorSet(vk::ImageView imageView, vk::Sampler sampler);
-  void createObjDescriptorSets();
   vk::raii::DescriptorSet &getSet(uint32_t setNum, uint32_t currentFrame);
 
 private:
