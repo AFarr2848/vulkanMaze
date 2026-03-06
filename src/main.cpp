@@ -238,7 +238,7 @@ private:
     });
     std::cout << "\n\ncreating pp pipeline" << std::endl;
     ppPipeline.init(*cxt, *dsc, *swp, *img);
-    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBasic.spv",
+    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBoxBlur.spv",
                                .vertPath = "build/shaders/vertPost.spv",
                                .topology = vk::PrimitiveTopology::eTriangleList,
                                .polygonMode = vk::PolygonMode::eFill,
