@@ -71,6 +71,8 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
 }
 
 float3 calculatePointLight(VertexOutput inVert, Light light) {
+  light.color *= light.brightness;
+
   float dist = distance(inVert.fragPos, light.pos);
   float attenuation = 1.0 / (attConstant + attLinear * dist + attQuadratic * (dist * dist));
 

@@ -1,3 +1,4 @@
+#include "vulkan/vulkan.hpp"
 #include <glm/glm.hpp>
 
 struct GlobalUBO {
@@ -38,4 +39,6 @@ struct ShaderResource {
   uint32_t binding;
   std::string name;
   vk::DescriptorSet dscSet;
+  vk::DescriptorType type;
+  vk::ShaderStageFlags stages;
 };

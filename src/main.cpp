@@ -1,10 +1,11 @@
+#include "vkMaze/Components/EngineConfig.hpp"
+#include "vkMaze/Components/RenderGraph.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/Window.hpp"
 #include "vkMaze/Objects/Pipelines.hpp"
 #include "vkMaze/Components/Buffers.hpp"
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/Descriptors.hpp"
-#include "vkMaze/Objects/PostProcessingPass.hpp"
 #include "vulkan/vulkan.hpp"
 #include <vkMaze/Components/VulkanEngine.hpp>
 #include <vkMaze/Objects/Camera.hpp>
@@ -20,7 +21,6 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Components/Managers.hpp>
 #include <vkMaze/Components/Spirv.hpp>
-#include <vkMaze/Components/RenderPass.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -31,11 +31,11 @@ FrameData frames;
 Buffers buf;
 Images img;
 Descriptors dsc;
-RenderPass renderPass;
-PostProcessingPass postPass;
 
 class VKMaze : public VulkanEngine {
 public:
+  RenderGraph renderGraph;
+
   void makeShapes() override {
     std::cout << "Light size:" << sizeof(SSBOLight) << std::endl;
     std::cout << "Offsets:" << std::endl;
@@ -54,6 +54,7 @@ public:
     materials.color("purple", glm::vec3(100, 20, 100));
     materials.color("blue", glm::vec3(0, 0, 100));
     materials.color("red", glm::vec3(100, 0, 0));
+    materials.color("white", glm::vec3(1000, 1000, 1000));
 
     // floor
     shapes.add(
@@ -107,8 +108,8 @@ public:
         glm::vec3(0.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelineUnlit,
-        materials.get("blue")
+        *&pipelinePhong,
+        materials.get("white")
 
     );
 
@@ -119,7 +120,7 @@ public:
         glm::vec3(0.0f),
         glm::vec3(0.2f),
         *&pipelinePhong,
-        materials.get("red")
+        materials.get("white")
 
     );
 
@@ -134,16 +135,16 @@ public:
     lights.addPointLight(
         "orbit_light",
         shapes.get("light_sphere").pos,
-        glm::vec3(.0f, .0f, .5f),
-        1.0f
+        glm::vec3(1.0f, 1.0f, 1.0f),
+        6.0f
 
     );
 
     lights.addPointLight(
         "orbit_light_vertical",
         shapes.get("light_sphere2").pos,
-        glm::vec3(.5f, 0, 0),
-        1.0f
+        glm::vec3(1.0f, 1.0f, 1.0f),
+        6.0f
 
     );
 
@@ -164,30 +165,8 @@ public:
   }
 
   void drawScreen(uint32_t imageIndex) override {
-    img->transition_image_layout(
-        img->colorImages[currentFrame],
-        vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::AccessFlagBits2::eShaderRead,            // srcAccessMask (no need to wait for previous operations)
-        vk::AccessFlagBits2::eColorAttachmentWrite,  // dstAccessMask
-        vk::PipelineStageFlagBits2::eFragmentShader, // srcStage
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::ImageAspectFlagBits::eColor // dstStage
-    );
-    renderPass.record(frames->commandBuffers[currentFrame], currentFrame, img->colorImageViews[currentFrame], img->depthImageView);
 
-    img->transition_image_layout(
-        img->colorImages[currentFrame],
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::ImageLayout::eShaderReadOnlyOptimal,
-        vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask (no need to wait for previous operations)
-        vk::AccessFlagBits2::eShaderRead,                   // dstAccessMask
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-        vk::PipelineStageFlagBits2::eFragmentShader,
-        vk::ImageAspectFlagBits::eColor // dstStage
-    );
-
-    postPass.record(frames->commandBuffers[currentFrame], currentFrame, swp->swapChainImageViews[imageIndex], img->depthImageView);
+    renderGraph.execute(frames->commandBuffers[currentFrame], currentFrame, imageIndex);
   }
 
   void makeMaterials() override {
@@ -201,12 +180,53 @@ private:
   Pipeline pipelinePhong;
   Pipeline pipelineUnlit;
   Pipeline pipelineWireframe;
-  Pipeline ppPipeline;
   std::vector<Pipeline *> pipelines = {&pipelinePhong, &pipelineUnlit, &pipelineWireframe};
 
   void createPipelines() override {
 
-    pipelinePhong.init(*cxt, *dsc, *swp, *img);
+    renderGraph.init(shapes, lights, *cxt, *swp, *img, *dsc, *buf);
+
+    renderGraph.addImage({
+        .name = "brightness",
+        .format = swp->swapChainSurfaceFormat.format,
+        .extent = swp->swapChainExtent,
+        .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+        .aspect = vk::ImageAspectFlagBits::eColor,
+        .samples = vk::SampleCountFlagBits::e1,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .isExternal = false,
+    });
+
+    renderGraph.addPass("main", {}, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, MAIN_PASS);
+
+    PipelineDsc bloomDsc = {
+        .fragPath = "build/shaders/fragBloom.spv",
+        .vertPath = "build/shaders/vertPost.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eNone,
+    };
+
+    PipelineDsc brightnessDsc = {
+        .fragPath = "build/shaders/fragSeperateBrightness.spv",
+        .vertPath = "build/shaders/vertPost.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eNone};
+    renderGraph.addPass("brightness", brightnessDsc, {{.resource = "brightness", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+
+    renderGraph.addPass("bloom", bloomDsc, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+
+    PipelineDsc presentDsc = {
+        .fragPath = "build/shaders/fragBasic.spv",
+        .vertPath = "build/shaders/vertPost.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eNone,
+    };
+    renderGraph.addPass("present", presentDsc, {{.resource = "swap", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+
+    pipelinePhong.init(*cxt, *swp, *img);
     pipelinePhong.createPipeline({
 
         .fragPath = "build/shaders/fragPhong.spv",
@@ -216,7 +236,7 @@ private:
         .cullModeFlags = vk::CullModeFlagBits::eBack,
 
     });
-    pipelineUnlit.init(*cxt, *dsc, *swp, *img);
+    pipelineUnlit.init(*cxt, *swp, *img);
     pipelineUnlit.createPipeline({
 
         .fragPath = "build/shaders/fragUnlit.spv",
@@ -226,7 +246,7 @@ private:
         .cullModeFlags = vk::CullModeFlagBits::eBack,
 
     });
-    pipelineWireframe.init(*cxt, *dsc, *swp, *img);
+    pipelineWireframe.init(*cxt, *swp, *img);
     pipelineWireframe.createPipeline({
 
         .fragPath = "build/shaders/fragUnlit.spv",
@@ -237,12 +257,6 @@ private:
 
     });
     std::cout << "\n\ncreating pp pipeline" << std::endl;
-    ppPipeline.init(*cxt, *dsc, *swp, *img);
-    ppPipeline.createPipeline({.fragPath = "build/shaders/fragBoxBlur.spv",
-                               .vertPath = "build/shaders/vertPost.spv",
-                               .topology = vk::PrimitiveTopology::eTriangleList,
-                               .polygonMode = vk::PolygonMode::eFill,
-                               .cullModeFlags = vk::CullModeFlagBits::eNone});
   }
 
   std::vector<Vertex> getVertices() override {
@@ -250,7 +264,6 @@ private:
   }
 
   void updateCameraTransforms(GlobalUBO &ubo) override {
-
     // ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.model = glm::mat4(1.0f);
     // ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -286,15 +299,8 @@ private:
 
   void createDescriptorSets() override {
     std::cout << "inittttttt" << std::endl;
-    renderPass.init({.shapes = shapes, .lights = lights}, *cxt, *dsc, *swp, *buf);
-    postPass.init({.pipeline = ppPipeline}, *cxt, *dsc, *swp, *buf, *img);
-    std::cout << "renderPass init complete" << std::endl;
-    renderPass.createGlobalDscSets();
-    std::cout << "renderPass dsc sets complete" << std::endl;
-
-    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
-    std::cout << "ppp dsc sets complete" << std::endl;
-
+    renderGraph.makeGlobalDscSets();
+    renderGraph.compile();
     lights.dscSets = dsc->createLightDescriptorSets();
   }
 
@@ -323,7 +329,7 @@ private:
 
   void changeResolution() override {
     swp->recreateSwapChain();
-    postPass.createPPPDscSets(img->colorImageViews, img->colorImageSampler);
+    renderGraph.compile();
   }
 };
 

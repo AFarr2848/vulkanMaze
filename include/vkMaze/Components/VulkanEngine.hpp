@@ -12,7 +12,6 @@ class GlobalUBO;
 class GLFWwindow;
 class Window;
 class SSBOLight;
-class RenderPass;
 
 class VulkanEngine {
 public:

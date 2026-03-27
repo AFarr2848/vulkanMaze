@@ -12,7 +12,6 @@
 #include "vkMaze/Objects/Pipelines.hpp"
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/EngineConfig.hpp"
-#include "vkMaze/Components/RenderPass.hpp"
 #include "vkMaze/Objects/Vertex.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include <iostream>
@@ -117,7 +116,7 @@ void VulkanEngine::drawFrame() {
   auto [result, imageIndex] = swp->swapChain.acquireNextImage(UINT64_MAX, *frames->presentCompleteSemaphore[semaphoreIndex], nullptr);
 
   if (result == vk::Result::eErrorOutOfDateKHR) {
-    swp->recreateSwapChain();
+    changeResolution();
     return;
   }
   if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
@@ -155,7 +154,7 @@ void VulkanEngine::drawFrame() {
     }
   } catch (const vk::SystemError &e) {
     if (e.code().value() == static_cast<int>(vk::Result::eErrorOutOfDateKHR)) {
-      swp->recreateSwapChain();
+      changeResolution();
       return;
     } else {
       throw;
@@ -171,38 +170,7 @@ void VulkanEngine::recordCommandBuffer(uint32_t imageIndex) {
   std::vector<uint32_t> indices = getIndices();
   frames->commandBuffers[currentFrame].begin({});
   // Before starting rendering, transition the swapchain image to COLOR_ATTACHMENT_OPTIMAL
-  img->transition_image_layout(
-      swp->swapChainImages[imageIndex],
-      vk::ImageLayout::eUndefined,
-      vk::ImageLayout::eColorAttachmentOptimal,
-      {},                                                 // srcAccessMask (no need to wait for previous operations)
-      vk::AccessFlagBits2::eColorAttachmentWrite,         // dstAccessMask
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-      vk::ImageAspectFlagBits::eColor // dstStage
-  );
-  img->transition_image_layout(
-      *img->depthImage,
-      vk::ImageLayout::eUndefined,
-      vk::ImageLayout::eDepthAttachmentOptimal,
-      vk::AccessFlagBits2::eDepthStencilAttachmentWrite,                                                // dstAccessMask
-      vk::AccessFlagBits2::eDepthStencilAttachmentWrite,                                                // dstAccessMask
-      vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, // dstAccessMask
-      vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, // dstAccessMask
-      vk::ImageAspectFlagBits::eDepth                                                                   // dstStage
-  );
   drawScreen(imageIndex);
-
-  // After rendering, transition the swapchain image to PRESENT_SRC
-  img->transition_image_layout(
-      swp->swapChainImages[imageIndex],
-      vk::ImageLayout::eColorAttachmentOptimal,
-      vk::ImageLayout::ePresentSrcKHR,
-      vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
-      {},                                                 // dstAccessMask
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-      vk::PipelineStageFlagBits2::eBottomOfPipe,          // dstStage
-      vk::ImageAspectFlagBits::eColor);
   frames->commandBuffers[currentFrame].end();
 }
 
@@ -245,8 +213,6 @@ void VulkanEngine::initVulkan() {
   std::cout << "Pipeline created" << std::endl;
   frames->createCommandPool();
   std::cout << "Command pool created" << std::endl;
-  img->createDepthResources();
-  img->createColorResources();
   std::cout << "Making shapes..." << std::endl;
   makeShapes();
   buf->createVertexBuffer();

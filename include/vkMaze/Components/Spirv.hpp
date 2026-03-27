@@ -16,6 +16,7 @@ public:
 
   bool hasPushConstants = false;
   vk::PushConstantRange pcRange;
+  std::vector<vk::raii::DescriptorSetLayout> layouts;
 
 private:
   void getPushConstantInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag);
@@ -28,7 +29,6 @@ private:
 
   std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindings;
   std::vector<std::vector<std::string>> names;
-  std::vector<vk::raii::DescriptorSetLayout> layouts;
   VulkanContext *cxt;
   SpvReflectShaderModule spvFragModule;
   SpvReflectShaderModule spvVertModule;

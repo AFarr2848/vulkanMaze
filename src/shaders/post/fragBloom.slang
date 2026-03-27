@@ -1,5 +1,7 @@
 [[vk::binding(0, 0)]]
 Sampler2D color;
+[[vk::binding(1, 0)]]
+Sampler2D brightness;
 
 struct VSOutput {
   float4 position : SV_Position;
@@ -21,10 +23,10 @@ float4 fragMain(VSOutput input) : SV_Target {
   for (int y = -range; y <= range; y++) {
     for (int x = -range; x <= range; x++) {
       float2 offset = float2(x, y) * texelSize;
-      texSum += color.Sample(input.uv + offset);
+      texSum += brightness.Sample(input.uv + offset);
       weightSum += 1.0;
     }
   }
 
-  return texSum / weightSum;
+  return (texSum / weightSum) + color.Sample(input.uv);
 }

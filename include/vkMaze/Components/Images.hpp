@@ -13,22 +13,13 @@ public:
     this->frame = &frame;
   }
 
-  std::vector<vk::raii::Image> colorImages;
-  std::vector<vk::raii::DeviceMemory> colorImageMemory;
-  std::vector<vk::raii::ImageView> colorImageViews;
-  vk::raii::Sampler colorImageSampler = nullptr;
+  vk::raii::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer = 0, uint32_t layerCount = 1);
 
-  vk::raii::Image depthImage = nullptr;
-  vk::raii::DeviceMemory depthImageMemory = nullptr;
-  vk::raii::ImageView depthImageView = nullptr;
-
-  vk::raii::ImageView createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer = 0, uint32_t layerCount = 1);
-
-  void createDepthResources();
-  void createColorResources();
   vk::Format findDepthFormat();
   void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount = 1);
+  void createImage(vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount = 1);
   void transition_image_layout(
+      vk::raii::CommandBuffer &cmd,
       vk::Image image,
       vk::ImageLayout old_layout,
       vk::ImageLayout new_layout,

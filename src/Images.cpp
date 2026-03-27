@@ -7,46 +7,9 @@
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
-vk::raii::ImageView Images::createImageView(vk::raii::Image &image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer, uint32_t layerCount) {
+vk::raii::ImageView Images::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits flags, uint32_t layer, uint32_t layerCount) {
   vk::ImageViewCreateInfo viewInfo{.image = image, .viewType = vk::ImageViewType::e2D, .format = format, .subresourceRange = {flags, 0, 1, layer, layerCount}};
   return vk::raii::ImageView(cxt->device, viewInfo);
-}
-
-void Images::createDepthResources() {
-  vk::Format depthFormat = findDepthFormat();
-  createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
-  depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
-}
-
-void Images::createColorResources() {
-  colorImages.clear();
-  colorImageMemory.clear();
-  colorImageViews.clear();
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vk::raii::Image image = nullptr;
-    vk::raii::DeviceMemory imageMem = nullptr;
-    vk::Format colorFormat = swp->swapChainSurfaceFormat.format;
-    createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, image, imageMem);
-    colorImages.push_back(std::move(image));
-    colorImageMemory.push_back(std::move(imageMem));
-    colorImageViews.push_back(createImageView(colorImages[i], colorFormat, vk::ImageAspectFlagBits::eColor));
-  }
-
-  vk::PhysicalDeviceProperties properties = cxt->physicalDevice.getProperties();
-  vk::SamplerCreateInfo samplerInfo{
-      .magFilter = vk::Filter::eLinear,
-      .minFilter = vk::Filter::eLinear,
-      .mipmapMode = vk::SamplerMipmapMode::eLinear,
-      .addressModeU = vk::SamplerAddressMode::eRepeat,
-      .addressModeV = vk::SamplerAddressMode::eRepeat,
-      .addressModeW = vk::SamplerAddressMode::eRepeat,
-      .mipLodBias = 0.0f,
-      .anisotropyEnable = vk::True,
-      .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-      .compareEnable = vk::False,
-      .compareOp = vk::CompareOp::eAlways};
-
-  colorImageSampler = cxt->device.createSampler(samplerInfo);
 }
 
 vk::Format Images::findDepthFormat() {
@@ -56,6 +19,9 @@ vk::Format Images::findDepthFormat() {
       },
       vk::ImageTiling::eOptimal,
       vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+void Images::createImage(vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount) {
+  createImage(swp->swapChainExtent.width, swp->swapChainExtent.height, format, tiling, usage, properties, image, imageMemory, layerCount);
 }
 
 void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::raii::Image &image, vk::raii::DeviceMemory &imageMemory, uint32_t layerCount) {
@@ -82,6 +48,7 @@ void Images::createImage(uint32_t width, uint32_t height, vk::Format format, vk:
 }
 
 void Images::transition_image_layout(
+    vk::raii::CommandBuffer &cmd,
     vk::Image image,
     vk::ImageLayout old_layout,
     vk::ImageLayout new_layout,
@@ -110,5 +77,5 @@ void Images::transition_image_layout(
       .dependencyFlags = {},
       .imageMemoryBarrierCount = 1,
       .pImageMemoryBarriers = &barrier};
-  frame->commandBuffers[frame->currentFrame].pipelineBarrier2(dependency_info);
+  cmd.pipelineBarrier2(dependency_info);
 }

@@ -40,13 +40,15 @@ SpirvReflectPipeline::SpirvReflectPipeline(const std::filesystem::path &vertPath
   spvReflectDestroyShaderModule(&spvVertModule);
 }
 void SpirvReflectPipeline::createShaderResources() {
-  for (int i = 0; i < names.size(); i++) {
-    for (int j = 0; j < names.at(i).size(); j++) {
+  for (int i = 0; i < bindings.size(); i++) {
+    for (int j = 0; j < bindings.at(i).size(); j++) {
       shaderResources.push_back({
 
           .set = static_cast<uint32_t>(i),
           .binding = static_cast<uint32_t>(j),
-          .name = names.at(i).at(j)
+          .name = names.at(i).at(j),
+          .type = bindings.at(i).at(j).descriptorType,
+          .stages = bindings.at(i).at(j).stageFlags
 
       });
     }

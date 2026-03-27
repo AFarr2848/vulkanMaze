@@ -7,8 +7,8 @@ class Images;
 class ShaderResource;
 
 struct PipelineDsc {
-  const std::filesystem::path &fragPath;
-  const std::filesystem::path &vertPath;
+  std::filesystem::path fragPath;
+  std::filesystem::path vertPath;
   vk::PrimitiveTopology topology;
   vk::PolygonMode polygonMode;
   vk::CullModeFlags cullModeFlags;
@@ -37,7 +37,7 @@ struct ColorDesc {
 
 class Pipeline {
 public:
-  void init(VulkanContext &cxt, Descriptors &dsc, Swapchain &swp, Images &img) {
+  void init(VulkanContext &cxt, Swapchain &swp, Images &img) {
     this->cxt = &cxt;
     this->swp = &swp;
     this->img = &img;
@@ -49,6 +49,7 @@ public:
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
   std::vector<ShaderResource> shaderResources;
+  std::vector<vk::raii::DescriptorSetLayout> setLayouts;
   vk::PushConstantRange pcRange;
   bool hasPushConstants;
 

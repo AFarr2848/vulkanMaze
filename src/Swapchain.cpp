@@ -83,8 +83,6 @@ void Swapchain::recreateSwapChain() {
   cleanupSwapChain();
   createSwapChain();
   createImageViews();
-  img->createDepthResources();
-  img->createColorResources();
 }
 
 void Swapchain::cleanupSwapChain() {
