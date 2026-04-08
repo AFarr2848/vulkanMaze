@@ -27,6 +27,8 @@ public:
 
   Material &color(const std::string &, glm::vec3);
   void initMaterials(VulkanContext &cxt, Images &img, FrameData &frame, Descriptors &dsc, Buffers &buf);
+  Material &getRandomMaterial();
+  void createColors();
 
 private:
   std::unordered_map<std::string, Material> materials;
@@ -40,6 +42,7 @@ public:
   size_t getSize() { return shapes.size(); }
   std::unordered_map<std::string, Shape> &getShapes() { return shapes; }
   void updateTransform(const std::string &name);
+  void updateShapes(float deltaTime);
   std::vector<Shape *> getDrawOrder();
 
   std::vector<Vertex> vertices;

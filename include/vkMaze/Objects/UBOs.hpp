@@ -12,7 +12,6 @@ struct GlobalUBO {
 struct PushConstant {
   int32_t transformIndex;           // 4 bytes at offset 0
   alignas(16) glm::ivec3 lightNums; // 12 bytes at offset 16
-                                    // Total: 28 bytes
 };
 
 enum LightType : int32_t {

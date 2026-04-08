@@ -7,6 +7,9 @@
 #include "vkMaze/Components/Images.hpp"
 #include "vkMaze/Components/Descriptors.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstdlib>
+#include <random>
+#include <string>
 #include <vkMaze/Components/VulkanEngine.hpp>
 #include <vkMaze/Objects/Camera.hpp>
 #include <vkMaze/Objects/Material.hpp>
@@ -47,14 +50,10 @@ public:
     std::cout << "\tParam1: " << offsetof(SSBOLight, param1) << std::endl;
     std::cout << "\tParam2: " << offsetof(SSBOLight, param2) << std::endl;
 
+    materials.createColors();
     materials.create("default", "", "");
     materials.create("backpack", "textures/backpack_albedo.jpg", "");
     materials.create("earth", "textures/earth.png", "");
-    materials.color("black", glm::vec3(0));
-    materials.color("purple", glm::vec3(100, 20, 100));
-    materials.color("blue", glm::vec3(0, 0, 100));
-    materials.color("red", glm::vec3(100, 0, 0));
-    materials.color("white", glm::vec3(1000, 1000, 1000));
 
     // floor
     shapes.add(
@@ -68,6 +67,43 @@ public:
 
     );
 
+    std::vector<std::string> randomColors = {
+        "red",
+        "green",
+        "blue",
+        "gray",
+        "black",
+        "purple",
+        "cyan",
+        "navy",
+        "teal",
+        "lime",
+    };
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> spinDistr(0, 200);
+    std::uniform_int_distribution<> colorDistr(0, randomColors.size() - 1);
+
+    int num = 0;
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        std::string name = "ico" + std::to_string(num++);
+        Shape &s = shapes.add(
+            name,
+            Icosahedron(),
+            glm::vec3((i - 2.0) / 5.0, (j - 2.0) / 5.0, -1.3),
+            glm::vec3(0.0f),
+            glm::vec3(0.1f),
+            *&pipelinePhong,
+            materials.get(randomColors.at(colorDistr(gen)))
+
+        );
+
+        s.rotVel = glm::vec3(spinDistr(gen) / 100.0f, spinDistr(gen) / 100.0f, spinDistr(gen) / 100.0f);
+      }
+    }
+
     // cube
     shapes.add(
         "cube",
@@ -79,15 +115,27 @@ public:
         materials.get("default")
 
     );
+    /*
+        shapes.add(
+            "backpack",
+            Mesh("models/Survival_BackPack_2.fbx"),
+            glm::vec3(0.0f),
+            glm::vec3(0.0f),
+            glm::vec3(0.005f),
+            *&pipelinePhong,
+            materials.get("backpack")
+
+        );
+        */
 
     shapes.add(
-        "backpack",
-        Mesh("models/Survival_BackPack_2.fbx"),
+        "wall",
+        Cube(),
+        glm::vec3(0.0f, 0.0f, -2.0f),
         glm::vec3(0.0f),
-        glm::vec3(0.0f),
-        glm::vec3(0.005f),
-        *&pipelinePhong,
-        materials.get("backpack")
+        glm::vec3(5.0f, 5.0f, 0.3f),
+        *&pipelineUnlit,
+        materials.get("gray")
 
     );
 
@@ -105,10 +153,10 @@ public:
     shapes.add(
         "light_sphere",
         Icosphere(3),
-        glm::vec3(0.0f, 5.0f, 0.0f),
+        glm::vec3(5.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelinePhong,
+        *&pipelineUnlit,
         materials.get("white")
 
     );
@@ -116,37 +164,39 @@ public:
     shapes.add(
         "light_sphere2",
         Icosphere(3),
-        glm::vec3(0.0f, 5.0f, 0.0f),
+        glm::vec3(-5.0f, 5.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.2f),
-        *&pipelinePhong,
+        *&pipelineUnlit,
         materials.get("white")
 
     );
+    /*
+        lights.addDirLight(
+            "sun",
+            glm::vec3(1.0, 1.0, 1.0),
+            glm::vec3(0.0f),
+            0.8f
 
-    lights.addDirLight(
-        "sun",
-        glm::vec3(0.3, 0.3, 0.3),
-        glm::vec3(0.0f),
-        .0f
+        );
 
-    );
+        lights.addPointLight(
+            "orbit_light",
+            shapes.get("light_sphere").pos,
+            glm::vec3(1.0f, 1.0f, 1.0f),
+            1.0f
 
-    lights.addPointLight(
-        "orbit_light",
-        shapes.get("light_sphere").pos,
-        glm::vec3(1.0f, 1.0f, 1.0f),
-        6.0f
+        );
 
-    );
+        lights.addPointLight(
+            "orbit_light_vertical",
+            shapes.get("light_sphere2").pos,
+            glm::vec3(1.0f, 1.0f, 1.0f),
+            1.0f
 
-    lights.addPointLight(
-        "orbit_light_vertical",
-        shapes.get("light_sphere2").pos,
-        glm::vec3(1.0f, 1.0f, 1.0f),
-        6.0f
-
-    );
+        );
+        */
+    lights.addPointLight("die_light", glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 3.0f);
 
     /*
         lights.addSpotLight(
@@ -196,8 +246,32 @@ private:
         .initialLayout = vk::ImageLayout::eUndefined,
         .isExternal = false,
     });
+    renderGraph.addImage({
+        .name = "blur",
+        .format = swp->swapChainSurfaceFormat.format,
+        .extent = swp->swapChainExtent,
+        .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+        .aspect = vk::ImageAspectFlagBits::eColor,
+        .samples = vk::SampleCountFlagBits::e1,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .isExternal = false,
+    });
 
-    renderGraph.addPass("main", {}, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, MAIN_PASS);
+    renderGraph.addPass(
+        "main", {},
+        {},
+        {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
+        MAIN_PASS
+
+    );
+
+    PipelineDsc blurDsc = {
+        .fragPath = "build/shaders/fragBoxBlur.spv",
+        .vertPath = "build/shaders/vertPost.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eNone,
+    };
 
     PipelineDsc bloomDsc = {
         .fragPath = "build/shaders/fragBloom.spv",
@@ -212,10 +286,31 @@ private:
         .vertPath = "build/shaders/vertPost.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullModeFlags = vk::CullModeFlagBits::eNone};
-    renderGraph.addPass("brightness", brightnessDsc, {{.resource = "brightness", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+        .cullModeFlags = vk::CullModeFlagBits::eNone,
+    };
+    renderGraph.addPass(
+        "brightness", brightnessDsc,
+        {},
+        {{.resource = "brightness", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
+        POST_PASS
 
-    renderGraph.addPass("bloom", bloomDsc, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+    );
+
+    // renderGraph.addPass("blur", blurDsc, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+    renderGraph.addPass(
+        "bloom1", bloomDsc,
+        {},
+        {{.resource = "blur", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
+        POST_PASS
+
+    );
+    renderGraph.addPass(
+        "bloom2", bloomDsc,
+        {{.shaderResource = "color", .rgResource = "blur"}},
+        {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
+        POST_PASS
+
+    );
 
     PipelineDsc presentDsc = {
         .fragPath = "build/shaders/fragBasic.spv",
@@ -224,7 +319,13 @@ private:
         .polygonMode = vk::PolygonMode::eFill,
         .cullModeFlags = vk::CullModeFlagBits::eNone,
     };
-    renderGraph.addPass("present", presentDsc, {{.resource = "swap", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+    renderGraph.addPass(
+        "present", presentDsc,
+        {},
+        {{.resource = "swap", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
+        POST_PASS
+
+    );
 
     pipelinePhong.init(*cxt, *swp, *img);
     pipelinePhong.createPipeline({
@@ -256,7 +357,6 @@ private:
         .cullModeFlags = vk::CullModeFlagBits::eBack,
 
     });
-    std::cout << "\n\ncreating pp pipeline" << std::endl;
   }
 
   std::vector<Vertex> getVertices() override {
@@ -274,10 +374,10 @@ private:
   }
 
   void updateLights(std::vector<SSBOLight> &lightVec) override {
-    lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
-    lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
-    // lights.get("flashlight").pos = camera.Position;
-    // lights.get("flashlight").dir =26AFarrar43 camera.Front;
+    // lights.get("orbit_light").pos = shapes.get("light_sphere").pos;
+    // lights.get("orbit_light_vertical").pos = shapes.get("light_sphere2").pos;
+    //  lights.get("flashlight").pos = camera.Position;
+    //  lights.get("flashlight").dir =26AFarrar43 camera.Front;
 
     for (auto &pair : lights.lights) {
       lightVec.push_back(pair.second);
@@ -285,10 +385,7 @@ private:
   };
 
   void updateTransforms(std::vector<glm::mat4> &transforms) override {
-    shapes.get("light_sphere").pos = {6 * sin(time), 8, 6 * cos(time)};
-    shapes.get("light_sphere2").pos = {-6 * sin(time), 8, -6 * cos(time)};
-    shapes.updateTransform("light_sphere");
-    shapes.updateTransform("light_sphere2");
+    shapes.updateShapes(deltaTime);
 
     transforms.insert(transforms.begin(), shapes.transforms.begin(), shapes.transforms.end());
   };

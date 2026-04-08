@@ -216,7 +216,7 @@ void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uin
       vk::ImageAspectFlagBits::eColor);
 }
 
-RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphAccess> writes, PassType type) {
+RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type) {
   RenderGraphPass pass = {.name = name, .type = type};
 
   if (type != MAIN_PASS) {
@@ -228,6 +228,11 @@ RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, s
       if (res.type == vk::DescriptorType::eCombinedImageSampler ||
           res.type == vk::DescriptorType::eSampledImage ||
           res.type == vk::DescriptorType::eInputAttachment) {
+
+        for (auto read : reads) {
+          if (res.name == read.shaderResource)
+            res.name = read.rgResource;
+        }
 
         // Set up ping-pong image numbers
         if (res.name.substr(0, 5) == "color") {
@@ -486,9 +491,9 @@ void RenderGraph::compile() {
       .magFilter = vk::Filter::eLinear,
       .minFilter = vk::Filter::eLinear,
       .mipmapMode = vk::SamplerMipmapMode::eLinear,
-      .addressModeU = vk::SamplerAddressMode::eRepeat,
-      .addressModeV = vk::SamplerAddressMode::eRepeat,
-      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+      .addressModeW = vk::SamplerAddressMode::eClampToEdge,
       .mipLodBias = 0.0f,
       .anisotropyEnable = vk::True,
       .maxAnisotropy = properties.limits.maxSamplerAnisotropy,

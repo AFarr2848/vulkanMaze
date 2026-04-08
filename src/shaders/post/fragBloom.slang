@@ -8,7 +8,7 @@ struct VSOutput {
   float2 uv;
 };
 
-static const int range = 3;
+static const int range = 1;
 
 [shader("fragment")]
 float4 fragMain(VSOutput input) : SV_Target {

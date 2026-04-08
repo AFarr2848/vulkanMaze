@@ -55,10 +55,11 @@ struct VertexOutput {
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
   VertexOutput output;
-  output.fragPos = mul(transforms[push.transformIndex], float4(input.pos, 1.0)).xyz;
-  output.sv_position = mul(ubo.proj, mul(ubo.view, mul(transforms[push.transformIndex], float4(input.pos, 1.0))));
+  float4x4 model = transforms[push.transformIndex];
+  output.fragPos = mul(model, float4(input.pos, 1.0)).xyz;
+  output.sv_position = mul(ubo.proj, mul(ubo.view, mul(model, float4(input.pos, 1.0))));
   output.color = normalize(float3(push.transformIndex));
-  output.norm = input.norm;
+  output.norm = normalize(mul((float3x3)model, input.norm));
   output.cameraPos = ubo.cameraPos;
   output.uv = input.uv;
   return output;

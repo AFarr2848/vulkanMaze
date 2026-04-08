@@ -32,7 +32,7 @@ struct Light {
 
 static float ambientStrength = 0.1;
 static float diffuseStrength = 1;
-static float specularStrength = 0.5;
+static float specularStrength = 1.5;
 static float attConstant = 1.0;
 static float attLinear = 0.09;
 static float attQuadratic = 0.032;

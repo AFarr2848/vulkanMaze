@@ -33,6 +33,10 @@ public:
   glm::vec3 rotation = glm::vec3(0.0f);
   glm::vec3 scale = glm::vec3(1.0f);
 
+  glm::vec3 vel = glm::vec3(0.0f);
+  glm::vec3 rotVel = glm::vec3(0.0f);
+  glm::vec3 scaleVel = glm::vec3(0.0f);
+
   Pipeline *pipeline;
   Material *material;
   MeshRange range;
@@ -52,6 +56,16 @@ private:
   void processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4 parentTransform);
   void processNode(aiNode *node, const aiScene *scene, glm::mat4 transform);
   glm::mat4 assimpToGlm(aiMatrix4x4 a);
+};
+
+class Icosahedron : public Shape {
+public:
+  Icosahedron() {
+    makeVerticesAndIndices();
+  }
+
+private:
+  void makeVerticesAndIndices();
 };
 
 class Icosphere : public Shape {

@@ -173,7 +173,7 @@ void Descriptors::createDescriptorPool() {
 
   vk::DescriptorPoolSize poolSizeMat{
       .type = vk::DescriptorType::eCombinedImageSampler,
-      .descriptorCount = 10
+      .descriptorCount = 128
 
   };
 
@@ -191,7 +191,7 @@ void Descriptors::createDescriptorPool() {
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = MAX_FRAMES_IN_FLIGHT * 6 + 10,
+      .maxSets = poolSizeUniform.descriptorCount + poolSizeObj.descriptorCount + poolSizePP.descriptorCount + poolSizeMat.descriptorCount,
       .poolSizeCount = 4,
       .pPoolSizes = poolSizes.data()
 

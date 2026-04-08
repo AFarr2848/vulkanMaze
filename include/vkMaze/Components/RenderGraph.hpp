@@ -61,6 +61,11 @@ struct RenderGraphAccess {
   auto operator<=>(const RenderGraphAccess &) const = default;
 };
 
+struct RenderGraphReadOverride {
+  std::string shaderResource;
+  std::string rgResource;
+};
+
 struct RenderGraphPass {
   std::string name;
   PassType type;
@@ -90,7 +95,7 @@ public:
     createPingPongResources();
   }
 
-  RenderGraphPass &addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphAccess> writes, PassType type);
+  RenderGraphPass &addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type);
   void addImage(const RenderGraphResourceDesc &desc);
   void addExternalImage(const RenderGraphResourceDesc &desc, vk::Image image, vk::raii::ImageView *view);
 
