@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
 #include <vector>
 #include <iostream>
@@ -19,7 +20,7 @@ enum Camera_Movement {
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
 const float SPEED = 2.5f;
-const float SENSITIVITY = 0.1f;
+const float SENSITIVITY = 0.3f;
 const float ZOOM = 45.0f;
 
 // An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
@@ -32,8 +33,7 @@ public:
   glm::vec3 Right;
   glm::vec3 WorldUp;
   // euler Angles
-  float Yaw;
-  float Pitch;
+  glm::quat orientation = glm::quat(1.f, 0.f, 0.f, 0.f);
   // camera options
   float MovementSpeed;
   float MouseSensitivity;
@@ -43,16 +43,12 @@ public:
   Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM) {
     Position = position;
     WorldUp = up;
-    Yaw = yaw;
-    Pitch = pitch;
     updateCameraVectors();
   }
   // constructor with scalar values
   Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM) {
     Position = glm::vec3(posX, posY, posZ);
     WorldUp = glm::vec3(upX, upY, upZ);
-    Yaw = yaw;
-    Pitch = pitch;
     updateCameraVectors();
   }
 
@@ -111,14 +107,10 @@ public:
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
-    Yaw += xoffset;
-    Pitch -= yoffset;
+    glm::quat yawRot = glm::angleAxis(glm::radians(-xoffset * MouseSensitivity), glm::vec3(0.f, 1.f, 0.f));
+    glm::quat pitchRot = glm::angleAxis(glm::radians(-yoffset * MouseSensitivity), Right);
 
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
-    if (Pitch > 89.0f)
-      Pitch = 89.0f;
-    if (Pitch < -89.0f)
-      Pitch = -89.0f;
+    orientation = glm::normalize(pitchRot * yawRot * orientation);
 
     updateCameraVectors();
   }
@@ -133,17 +125,11 @@ public:
   }
 
 private:
-  // calculates the front vector from the Camera's (updated) Euler Angles
   void updateCameraVectors() {
-    // calculate the new Front vector
-    glm::vec3 front;
-    front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = sin(glm::radians(Pitch));
-    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    Front = glm::normalize(front);
-    // also re-calculate the Right and Up vector
-    Right = glm::normalize(glm::cross(Front, WorldUp)); // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
-    Up = glm::normalize(glm::cross(Right, Front));
+
+    Front = glm::normalize(orientation * glm::vec3(0.f, 0.f, -1.f));
+    Right = glm::normalize(orientation * glm::vec3(1.f, 0.f, 0.f));
+    Up = glm::normalize(orientation * glm::vec3(0.f, 1.f, 0.f));
   }
 
   float pointToSegmentDistance(glm::vec2 p, glm::vec2 a, glm::vec2 b) {
