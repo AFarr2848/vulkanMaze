@@ -1,5 +1,5 @@
 #pragma once
-#include "spirv-reflect/spirv_reflect.h"
+#include <spirv_reflect.h>
 #include <filesystem>
 
 class VulkanContext;

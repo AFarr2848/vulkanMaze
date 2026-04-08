@@ -1,5 +1,3 @@
-
-
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vulkan/vulkan.hpp"
 #include <algorithm>
@@ -7,7 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <spirv-reflect/spirv_reflect.h>
+#include <spirv_reflect.h>
 #include <vkMaze/Components/Spirv.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Objects/UBOs.hpp>

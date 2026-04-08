@@ -18,6 +18,7 @@ If you want to build this yourself, make sure you have:
 - `assimp`
 - `pkg-config`
 - `slangc`
-I think lol maybe there's more
+- `vcpkg`
+I think lol maybe there's more i will fix this later
 
 Then just clone, run `build.sh`, then run `build/VulkanTest`
