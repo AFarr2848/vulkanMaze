@@ -15,6 +15,7 @@ public:
   void pollEvents();
   bool shouldClose() const;
   void mouseMoved(float, float);
+  void resetMouse();
 
 private:
   bool firstMouse = true;

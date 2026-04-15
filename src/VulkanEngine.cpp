@@ -55,6 +55,9 @@ void VulkanEngine::run() {
 }
 
 void VulkanEngine::mainLoop() {
+  // Seed time values before first frame so deltaTime is well-defined.
+  time = static_cast<float>(glfwGetTime());
+  deltaTime = 0.0f;
   while (!glfwWindowShouldClose(win->window)) {
     glfwPollEvents();
     keepTime();
@@ -125,9 +128,9 @@ void VulkanEngine::drawFrame() {
 
   cxt->device.resetFences(*frames->inFlightFences[currentFrame]);
   frames->commandBuffers[currentFrame].reset();
-  recordCommandBuffer(imageIndex);
   updateGlobalUniformBuffer(currentFrame);
   updateStorageBuffer(currentFrame);
+  recordCommandBuffer(imageIndex);
 
   vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
   const vk::SubmitInfo submitInfo{

@@ -25,6 +25,7 @@ add_executable(VulkanTest
   src/Managers.cpp
   src/Spirv.cpp
   src/RenderGraph.cpp
+  src/Imgui.cpp
 )
 
 find_package(Vulkan REQUIRED)
@@ -32,6 +33,7 @@ find_package(PkgConfig REQUIRED)
 find_package(assimp REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(Stb REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 
 pkg_check_modules(GLFW REQUIRED glfw3)
@@ -48,7 +50,7 @@ target_include_directories(VulkanTest PRIVATE
 
 target_include_directories(VulkanTest PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${stb_INCLUDE_DIRS}
+    ${Stb_INCLUDE_DIR}
 )
 
 target_precompile_headers(VulkanTest PRIVATE
@@ -62,6 +64,7 @@ target_link_libraries(VulkanTest
     pthread
     assimp
     unofficial::spirv-reflect
+    imgui::imgui
 )
 
 # ---- Shader compilation section ----

@@ -24,6 +24,7 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Components/Managers.hpp>
 #include <vkMaze/Components/Spirv.hpp>
+#include <vkMaze/Components/Imgui.hpp>
 
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -38,6 +39,7 @@ Descriptors dsc;
 class VKMaze : public VulkanEngine {
 public:
   RenderGraph renderGraph;
+  Imgui gui;
 
   void makeShapes() override {
     std::cout << "Light size:" << sizeof(SSBOLight) << std::endl;
@@ -234,7 +236,7 @@ private:
 
   void createPipelines() override {
 
-    renderGraph.init(shapes, lights, *cxt, *swp, *img, *dsc, *buf);
+    renderGraph.init(shapes, lights, *cxt, *swp, *img, *dsc, *buf, gui);
 
     renderGraph.addImage({
         .name = "brightness",
@@ -296,7 +298,7 @@ private:
 
     );
 
-    // renderGraph.addPass("blur", blurDsc, {{.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}}, POST_PASS);
+    /*
     renderGraph.addPass(
         "bloom1", bloomDsc,
         {},
@@ -311,6 +313,7 @@ private:
         POST_PASS
 
     );
+    */
 
     PipelineDsc presentDsc = {
         .fragPath = "build/shaders/fragBasic.spv",
@@ -323,7 +326,7 @@ private:
         "present", presentDsc,
         {},
         {{.resource = "swap", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
-        POST_PASS
+        GUI_PASS
 
     );
 
@@ -398,6 +401,9 @@ private:
     renderGraph.makeGlobalDscSets();
     renderGraph.compile();
     lights.dscSets = dsc->createLightDescriptorSets();
+    // uhhhhhh this prolly doesn't go here
+    gui.setRenderGraph(renderGraph);
+    gui.init(*cxt, *dsc, *swp, *win);
   }
 
   void mouseMoved(float xoffset, float yoffset) override {
@@ -405,6 +411,7 @@ private:
   }
 
   void processInput(GLFWwindow *window) override {
+    static bool backspaceWasDown = false;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
       glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -419,11 +426,23 @@ private:
       camera.processKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
       camera.processKeyboard(DOWN, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
-      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    const bool backspaceDown = glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS;
+    if (backspaceDown && !backspaceWasDown) {
+      int mode = glfwGetInputMode(window, GLFW_CURSOR);
+      if (mode == GLFW_CURSOR_DISABLED) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+      } else {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        Window *thisWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (thisWindow != nullptr)
+          thisWindow->resetMouse();
+      }
+    }
+    backspaceWasDown = backspaceDown;
   }
 
   void changeResolution() override {
+    std::cout << "bro" << std::endl;
     swp->recreateSwapChain();
     renderGraph.compile();
   }

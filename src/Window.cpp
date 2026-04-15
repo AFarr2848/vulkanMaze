@@ -23,6 +23,10 @@ void Window::initWindow() {
   }
 }
 
+void Window::resetMouse() {
+  firstMouse = true;
+}
+
 void Window::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
   Window *thisWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
   thisWindow->framebufferResized = true;
@@ -32,6 +36,13 @@ void Window::GLFWMouseCallback(GLFWwindow *window, double xposIn, double yposIn)
   Window *thisWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
   float xpos = static_cast<float>(xposIn);
   float ypos = static_cast<float>(yposIn);
+
+  if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+    thisWindow->lastX = xpos;
+    thisWindow->lastY = ypos;
+    thisWindow->firstMouse = true;
+    return;
+  }
 
   if (thisWindow->firstMouse) {
     thisWindow->lastX = xpos;

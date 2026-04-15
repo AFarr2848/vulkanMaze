@@ -1,6 +1,10 @@
 {
   "dependencies": [
     "spirv-reflect",
-    "stb"
+    "stb",
+    {
+      "name": "imgui",
+      "features": [ "vulkan-binding", "glfw-binding" ]
+    }
   ]
 }

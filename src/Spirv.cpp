@@ -116,11 +116,8 @@ void SpirvReflectPipeline::readSpirv(const std::filesystem::path &path, SpvRefle
 void SpirvReflectPipeline::getPushConstantInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag) {
   uint32_t pushCount = 0;
   spvReflectEnumeratePushConstantBlocks(&module, &pushCount, nullptr);
-  std::cout << "  getPushConstantInfo called with stage " << static_cast<uint32_t>(stageFlag)
-            << ", found " << pushCount << " push constant blocks" << std::endl;
 
   if (pushCount == 0) {
-    std::cout << "No push constants" << std::endl;
     return;
   }
 
@@ -132,7 +129,6 @@ void SpirvReflectPipeline::getPushConstantInfo(SpvReflectShaderModule &module, v
     hasPushConstants = true;
     pushMin = std::min(pushMin, push->offset);
     pushMax = std::max(pushMax, push->offset + push->size);
-    std::cout << "    Block: offset=" << push->offset << " size=" << push->size << std::endl;
   }
 
   uint32_t newMin = (pcRange.size == 0) ? pushMin : std::min(pushMin, pcRange.offset);
@@ -140,9 +136,7 @@ void SpirvReflectPipeline::getPushConstantInfo(SpvReflectShaderModule &module, v
 
   pcRange.offset = newMin;
   pcRange.size = newMax - newMin;
-  std::cout << "  Before |=: pcRange.stageFlags.m_mask = " << vk::to_string(pcRange.stageFlags) << std::endl;
   pcRange.stageFlags |= stageFlag;
-  std::cout << "  After |=: pcRange.stageFlags.m_mask = " << vk::to_string(pcRange.stageFlags) << std::endl;
 }
 
 void SpirvReflectPipeline::getBindingInfo(SpvReflectShaderModule &module, vk::ShaderStageFlagBits stageFlag) {
@@ -171,7 +165,6 @@ void SpirvReflectPipeline::getBindingInfo(SpvReflectShaderModule &module, vk::Sh
 
       bindings.at(setNumber).push_back(vkLayout);
       names.at(setNumber).push_back(spvBinding->name);
-      std::cout << "Descriptor of type " << vk::to_string(vkLayout.descriptorType) << " at " << i << ", " << j << std::endl;
     }
   }
 }

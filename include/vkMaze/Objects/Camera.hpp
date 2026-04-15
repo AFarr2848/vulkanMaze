@@ -110,7 +110,7 @@ public:
     glm::quat yawRot = glm::angleAxis(glm::radians(-xoffset * MouseSensitivity), glm::vec3(0.f, 1.f, 0.f));
     glm::quat pitchRot = glm::angleAxis(glm::radians(-yoffset * MouseSensitivity), Right);
 
-    orientation = glm::normalize(pitchRot * yawRot * orientation);
+    orientation = glm::normalize(yawRot * pitchRot * orientation);
 
     updateCameraVectors();
   }

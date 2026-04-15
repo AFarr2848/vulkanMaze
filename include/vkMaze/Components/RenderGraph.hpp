@@ -13,10 +13,12 @@ class VulkanContext;
 class Buffers;
 class ShapeManager;
 class LightManager;
+class Imgui;
 
 enum PassType {
   MAIN_PASS = 0,
-  POST_PASS = 1
+  POST_PASS = 1,
+  GUI_PASS = 2
 };
 
 // Describes how a render graph image should be created or bound.
@@ -82,9 +84,18 @@ struct RenderGraphPass {
   bool hasDepthRead = false;
 };
 
+struct RenderGraphPassDsc {
+  std::string name;
+  PassType type;
+  PipelineDsc pipelineDsc;
+
+  std::vector<RenderGraphReadOverride> readOverrides;
+  std::vector<RenderGraphAccess> writes;
+};
+
 class RenderGraph {
 public:
-  void init(ShapeManager &shapes, LightManager &lights, VulkanContext &cxt, Swapchain &swp, Images &img, Descriptors &dsc, Buffers &buf) {
+  void init(ShapeManager &shapes, LightManager &lights, VulkanContext &cxt, Swapchain &swp, Images &img, Descriptors &dsc, Buffers &buf, Imgui &gui) {
     this->cxt = &cxt;
     this->img = &img;
     this->swp = &swp;
@@ -92,14 +103,23 @@ public:
     this->buf = &buf;
     this->shapes = &shapes;
     this->lights = &lights;
+    this->gui = &gui;
     createPingPongResources();
   }
 
-  RenderGraphPass &addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type);
+  RenderGraphPassDsc &addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type);
   void addImage(const RenderGraphResourceDesc &desc);
   void addExternalImage(const RenderGraphResourceDesc &desc, vk::Image image, vk::raii::ImageView *view);
 
   RenderGraphResource &getResource(std::string id, int imageIndex = -1);
+
+  size_t getUncompiledPassCount() const { return uncompiledPasses.size(); }
+  RenderGraphPass *getCompiledPass(size_t index) { return index < compiledPasses.size() ? &compiledPasses.at(index) : nullptr; }
+  const std::vector<RenderGraphPass> &getCompiledPasses() const { return compiledPasses; }
+  bool movePass(size_t from, size_t to);
+  bool removePass(size_t index);
+  std::vector<std::string> listResourceIds() const;
+  const std::vector<std::vector<uint32_t>> &getPassDag() const { return passDag; }
 
   void compile();
 
@@ -134,8 +154,12 @@ private:
   VulkanContext *cxt = nullptr;
   Descriptors *dsc = nullptr;
   Buffers *buf = nullptr;
+  Imgui *gui = nullptr;
   std::unordered_map<std::string, RenderGraphResource> resources;
-  std::vector<RenderGraphPass> passes;
+  std::vector<RenderGraphPass> compiledPasses;
+  std::vector<RenderGraphPassDsc> uncompiledPasses;
+  std::vector<std::vector<uint32_t>> passDag;
+
   std::unordered_map<uint32_t, std::vector<BarrierPoint>> resourceBarriers;
 
   std::vector<vk::raii::DescriptorSet> globalDscSets;
@@ -146,9 +170,13 @@ private:
   vk::Image *finalImage = nullptr;
 
   void makeDescriptorSets();
+  RenderGraphPass createPassFromDsc(RenderGraphPassDsc &dsc);
+  std::vector<std::vector<uint32_t>> makePassDag(const std::vector<RenderGraphPass> &passes) const;
+  std::vector<int> flattenDAG(const std::vector<std::vector<uint32_t>> &dag) const;
 
   void recordMain(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
   void recordPost(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
+  void recordGui(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
 
   void createPingPongResources();
 };

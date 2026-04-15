@@ -11,11 +11,76 @@
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Objects/Material.hpp"
 #include "vulkan/vulkan.hpp"
-#include <csignal>
+#include "vkMaze/Components/Imgui.hpp"
 #include <cstdint>
+#include <algorithm>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vulkan/vulkan_raii.hpp>
+
+void RenderGraph::recordGui(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass) {
+
+  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
+  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
+  vk::RenderingAttachmentInfo attachmentInfo;
+  vk::RenderingAttachmentInfo depthAttachmentInfo;
+  for (auto &write : pass.writes) {
+    auto &resource = getResource(write.resource, imageIndex);
+    if (write.layout == vk::ImageLayout::eColorAttachmentOptimal)
+
+      attachmentInfo = {
+          .imageView = resource.getImageView(),
+          .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+          .loadOp = vk::AttachmentLoadOp::eClear,
+          .storeOp = vk::AttachmentStoreOp::eStore,
+          .clearValue = clearColor
+
+      };
+    else if (write.layout == vk::ImageLayout::eDepthAttachmentOptimal || write.layout == vk::ImageLayout::eDepthAttachmentOptimalKHR)
+      depthAttachmentInfo = {
+          .imageView = resource.getImageView(),
+          .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+          .loadOp = vk::AttachmentLoadOp::eClear,
+          .storeOp = vk::AttachmentStoreOp::eStore,
+          .clearValue = clearDepth
+
+      };
+  }
+  assert(attachmentInfo != nullptr);
+  if (depthAttachmentInfo == nullptr) {
+    depthAttachmentInfo = {
+        .imageView = nullptr,
+        .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = clearDepth
+
+    };
+  }
+  vk::RenderingInfo renderingInfo = {
+      .renderArea = {.offset = {0, 0}, .extent = swp->swapChainExtent},
+      .layerCount = 1,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &attachmentInfo,
+      .pDepthAttachment = &depthAttachmentInfo
+
+  };
+
+  cmd.beginRendering(renderingInfo);
+
+  cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
+  cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
+
+  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline.graphicsPipeline);
+  if (pass.pipeline.usesSet(0))
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline.pipelineLayout, 0, *pass.postImgDscSets[frameIndex], nullptr);
+  cmd.draw(3, 1, 0, 0);
+  gui->renderImgui(cmd);
+
+  cmd.endRendering();
+}
 
 void RenderGraph::recordPost(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass) {
 
@@ -180,8 +245,8 @@ void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uin
 
   );
 
-  for (size_t passIndex = 0; passIndex < passes.size(); passIndex++) {
-    RenderGraphPass &pass = passes[passIndex];
+  for (size_t passIndex = 0; passIndex < compiledPasses.size(); passIndex++) {
+    RenderGraphPass &pass = compiledPasses[passIndex];
     if (resourceBarriers.contains(passIndex)) {
       for (BarrierPoint &bp : resourceBarriers.at(passIndex)) {
         RenderGraphResource *res;
@@ -202,6 +267,9 @@ void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uin
     case POST_PASS:
       recordPost(cmd, frameIndex, imageIndex, pass);
       break;
+    case GUI_PASS:
+      recordGui(cmd, frameIndex, imageIndex, pass);
+      break;
     }
   }
   img->transition_image_layout(
@@ -216,20 +284,24 @@ void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uin
       vk::ImageAspectFlagBits::eColor);
 }
 
-RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type) {
-  RenderGraphPass pass = {.name = name, .type = type};
+RenderGraphPass RenderGraph::createPassFromDsc(RenderGraphPassDsc &dsc) {
+  RenderGraphPass pass = {
+      .name = dsc.name,
+      .type = dsc.type,
 
-  if (type != MAIN_PASS) {
+  };
+
+  if (pass.type != MAIN_PASS) {
     pass.pipeline = Pipeline();
     pass.pipeline.init(*cxt, *swp, *img);
-    pass.pipeline.createPipeline(dsc);
+    pass.pipeline.createPipeline(dsc.pipelineDsc);
     for (int i = 0; i < pass.pipeline.shaderResources.size(); i++) {
       ShaderResource &res = pass.pipeline.shaderResources.at(i);
       if (res.type == vk::DescriptorType::eCombinedImageSampler ||
           res.type == vk::DescriptorType::eSampledImage ||
           res.type == vk::DescriptorType::eInputAttachment) {
 
-        for (auto read : reads) {
+        for (auto read : dsc.readOverrides) {
           if (res.name == read.shaderResource)
             res.name = read.rgResource;
         }
@@ -258,7 +330,7 @@ RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, s
     }
   }
 
-  for (auto write : writes) {
+  for (auto write : dsc.writes) {
     if (write.resource == "color" && pass.hasColorRead) {
       currentColor = (currentColor + 1) % 2;
       write.resource = "color:" + std::to_string(currentColor);
@@ -273,9 +345,52 @@ RenderGraphPass &RenderGraph::addPass(std::string name, const PipelineDsc dsc, s
     }
     pass.writes.push_back(write);
   }
+  return std::move(pass);
+}
 
-  passes.push_back(std::move(pass));
-  return passes.at(passes.size() - 1);
+RenderGraphPassDsc &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type) {
+  RenderGraphPassDsc pass = {.name = name, .type = type, .pipelineDsc = dsc, .readOverrides = reads, .writes = writes};
+  uncompiledPasses.push_back(std::move(pass));
+  return uncompiledPasses.at(uncompiledPasses.size() - 1);
+}
+
+std::vector<std::vector<uint32_t>> RenderGraph::makePassDag(const std::vector<RenderGraphPass> &passes) const {
+  std::vector<std::vector<uint32_t>> dag(passes.size());
+  std::vector<std::unordered_set<uint32_t>> seenEdges(passes.size());
+
+  std::unordered_map<std::string, uint32_t> lastWriter;
+  std::unordered_map<std::string, std::vector<uint32_t>> readersSinceWrite;
+
+  auto addEdge = [&](uint32_t from, uint32_t to) {
+    if (from == to)
+      return;
+    if (seenEdges.at(from).insert(to).second)
+      dag.at(from).push_back(to);
+  };
+
+  for (uint32_t passIndex = 0; passIndex < passes.size(); passIndex++) {
+    const RenderGraphPass &pass = passes.at(passIndex);
+
+    for (const RenderGraphAccess &read : pass.reads) {
+      if (lastWriter.contains(read.resource))
+        addEdge(lastWriter.at(read.resource), passIndex);
+      readersSinceWrite[read.resource].push_back(passIndex);
+    }
+
+    for (const RenderGraphAccess &write : pass.writes) {
+      const std::string &resource = write.resource;
+      auto &resourceReaders = readersSinceWrite[resource];
+      for (uint32_t reader : resourceReaders)
+        addEdge(reader, passIndex);
+      resourceReaders.clear();
+
+      if (lastWriter.contains(resource))
+        addEdge(lastWriter.at(resource), passIndex);
+      lastWriter[resource] = passIndex;
+    }
+  }
+
+  return dag;
 }
 
 void RenderGraph::addImage(const RenderGraphResourceDesc &desc) {
@@ -383,13 +498,70 @@ void RenderGraph::makeGlobalDscSets() {
   }
 }
 
+std::vector<int> RenderGraph::flattenDAG(const std::vector<std::vector<uint32_t>> &dag) const {
+  std::vector<int> inDegree(dag.size(), 0);
+  for (const auto &edges : dag) {
+    for (int to : edges) {
+      if (to < 0 || static_cast<size_t>(to) >= dag.size())
+        continue;
+      inDegree.at(static_cast<size_t>(to))++;
+    }
+  }
+
+  std::queue<int> zeroInDegree;
+  for (size_t i = 0; i < inDegree.size(); i++) {
+    if (inDegree.at(i) == 0)
+      zeroInDegree.push(static_cast<int>(i));
+  }
+
+  std::vector<int> order;
+  order.reserve(dag.size());
+
+  while (!zeroInDegree.empty()) {
+    int node = zeroInDegree.front();
+    zeroInDegree.pop();
+    order.push_back(node);
+
+    for (int to : dag.at(static_cast<size_t>(node))) {
+      if (to < 0 || static_cast<size_t>(to) >= dag.size())
+        continue;
+      int &deg = inDegree.at(static_cast<size_t>(to));
+      deg--;
+      if (deg == 0)
+        zeroInDegree.push(to);
+    }
+  }
+
+  // Cycle detected: no valid topological order.
+  if (order.size() != dag.size())
+    return {};
+  return order;
+}
+
 void RenderGraph::compile() {
   resourceBarriers.clear();
+  compiledPasses.clear();
+  passDag.clear();
+  currentColor = 0;
+  currentDepth = 0;
+  std::vector<RenderGraphPass> pendingPasses;
+  pendingPasses.reserve(uncompiledPasses.size());
+  for (RenderGraphPassDsc &passDsc : uncompiledPasses)
+    pendingPasses.push_back(createPassFromDsc(passDsc));
+  passDag = makePassDag(pendingPasses);
+  auto indices = flattenDAG(passDag);
+  for (uint32_t i : indices) {
+    compiledPasses.push_back(std::move(pendingPasses.at(i)));
+  }
+
   for (auto &pair : resources) {
     RenderGraphResource &r = pair.second;
     r.desc.extent = swp->swapChainExtent;
 
     if (r.isExternal == false) {
+      r.imageView = nullptr;
+      r.image = nullptr;
+      r.memory = nullptr;
       img->createImage(r.desc.extent.width, r.desc.extent.height, r.desc.format, vk::ImageTiling::eOptimal, r.desc.usage, vk::MemoryPropertyFlagBits::eDeviceLocal, r.image, r.memory);
       r.imageView = img->createImageView(r.getImage(), r.desc.format, r.desc.aspect);
     } else {
@@ -402,8 +574,8 @@ void RenderGraph::compile() {
   std::unordered_map<std::string, RenderGraphAccess> lastAccess;
 
   // assumes passes are in order
-  for (uint32_t i = 0; i < passes.size(); i++) {
-    RenderGraphPass &pass = passes.at(i);
+  for (uint32_t i = 0; i < compiledPasses.size(); i++) {
+    RenderGraphPass &pass = compiledPasses.at(i);
 
     for (RenderGraphAccess &access : pass.reads) {
       if (!lastAccess.contains(access.resource)) {
@@ -413,7 +585,6 @@ void RenderGraph::compile() {
           BarrierPoint barrier{
               .resource = access.resource,
               .oldLayout = r.layout,
-              .newLayout = access.layout,
               .oldAccess = {},
               .newAccess = access.access,
               .oldStage = vk::PipelineStageFlagBits2::eTopOfPipe,
@@ -501,9 +672,9 @@ void RenderGraph::compile() {
       .compareOp = vk::CompareOp::eAlways};
   sampler = vk::raii::Sampler(cxt->device, samplerInfo);
 
-  for (auto &pass : passes) {
+  for (auto &pass : compiledPasses) {
 
-    if (pass.type == POST_PASS) {
+    if (pass.type == POST_PASS || pass.type == GUI_PASS) {
       std::cout << "Making post img dsc sets" << std::endl;
       makePostImgDscSets(pass);
     }
@@ -512,7 +683,25 @@ void RenderGraph::compile() {
 
 void RenderGraph::clear() {
   resources.clear();
-  passes.clear();
+  compiledPasses.clear();
+  uncompiledPasses.clear();
+  passDag.clear();
+}
+
+bool RenderGraph::removePass(size_t index) {
+  if (index >= uncompiledPasses.size())
+    return false;
+  uncompiledPasses.erase(uncompiledPasses.begin() + static_cast<long>(index));
+  return true;
+}
+
+std::vector<std::string> RenderGraph::listResourceIds() const {
+  std::vector<std::string> names;
+  names.reserve(resources.size());
+  for (const auto &pair : resources)
+    names.push_back(pair.first);
+  std::sort(names.begin(), names.end());
+  return names;
 }
 
 void RenderGraph::createPingPongResources() {
