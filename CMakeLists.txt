@@ -87,6 +87,9 @@ set(SHADER_SOURCES
     ${SHADER_DIR}/post/vertPost.slang
     ${SHADER_DIR}/post/fragSeperateBrightness.slang
     ${SHADER_DIR}/post/fragBloom.slang
+    ${SHADER_DIR}/post/fragGaussianBlurH.slang
+    ${SHADER_DIR}/post/fragGaussianBlurV.slang
+    ${SHADER_DIR}/post/fragCombineImages.slang
 )
 
 set(SHADER_BINARIES "")

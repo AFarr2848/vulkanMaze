@@ -311,6 +311,10 @@ RenderGraphPass RenderGraph::createPassFromDsc(RenderGraphPassDsc &dsc) {
           res.name = "color:" + std::to_string(currentColor);
           pass.hasColorRead = true;
         }
+        if (res.name.substr(0, 7) == "scratch") {
+          res.name = "scratch:" + std::to_string(currentScratch);
+          pass.hasScratchRead = true;
+        }
         if (res.name.substr(0, 5) == "depth") {
           res.name = "depth:" + std::to_string(currentDepth);
           pass.hasDepthRead = true;
@@ -337,6 +341,12 @@ RenderGraphPass RenderGraph::createPassFromDsc(RenderGraphPassDsc &dsc) {
     } else if (write.resource == "color") {
       write.resource = "color:" + std::to_string(currentColor);
     }
+    if (write.resource == "scratch" && pass.hasScratchRead) {
+      currentScratch = (currentScratch + 1) % 2;
+      write.resource = "scratch:" + std::to_string(currentScratch);
+    } else if (write.resource == "scratch") {
+      write.resource = "scratch:" + std::to_string(currentScratch);
+    }
     if (write.resource == "depth" && pass.hasDepthRead) {
       currentDepth = (currentDepth + 1) % 2;
       write.resource = "depth:" + std::to_string(currentDepth);
@@ -350,8 +360,16 @@ RenderGraphPass RenderGraph::createPassFromDsc(RenderGraphPassDsc &dsc) {
 
 RenderGraphPassDsc &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type) {
   RenderGraphPassDsc pass = {.name = name, .type = type, .pipelineDsc = dsc, .readOverrides = reads, .writes = writes};
-  uncompiledPasses.push_back(std::move(pass));
-  return uncompiledPasses.at(uncompiledPasses.size() - 1);
+  auto insertIt = uncompiledPasses.end();
+  if (type != GUI_PASS) {
+    insertIt = std::find_if(uncompiledPasses.begin(), uncompiledPasses.end(), [](const RenderGraphPassDsc &existingPass) {
+      return existingPass.type == GUI_PASS;
+    });
+  }
+
+  size_t insertIndex = static_cast<size_t>(std::distance(uncompiledPasses.begin(), insertIt));
+  uncompiledPasses.insert(insertIt, std::move(pass));
+  return uncompiledPasses.at(insertIndex);
 }
 
 std::vector<std::vector<uint32_t>> RenderGraph::makePassDag(const std::vector<RenderGraphPass> &passes) const {
@@ -544,6 +562,7 @@ void RenderGraph::compile() {
   passDag.clear();
   currentColor = 0;
   currentDepth = 0;
+  currentScratch = 0;
   std::vector<RenderGraphPass> pendingPasses;
   pendingPasses.reserve(uncompiledPasses.size());
   for (RenderGraphPassDsc &passDsc : uncompiledPasses)
@@ -748,11 +767,29 @@ void RenderGraph::createPingPongResources() {
     };
     addImage(dsc);
   }
+
+  // extra ping pong
+  for (int i = 0; i < 2; i++) {
+    RenderGraphResourceDesc dsc = {
+        .name = "scratch:" + std::to_string(i),
+        .format = swp->swapChainSurfaceFormat.format,
+        .extent = swp->swapChainExtent,
+        .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+        .aspect = vk::ImageAspectFlagBits::eColor,
+        .samples = vk::SampleCountFlagBits::e1,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .isExternal = false,
+    };
+    addImage(dsc);
+  }
 }
 RenderGraphResource &RenderGraph::getResource(std::string id, int imageIndex) {
   if (id == "swap") {
     assert(imageIndex >= 0);
     id = "swap:" + std::to_string(imageIndex);
+  }
+  if (!resources.contains(id)) {
+    std::cerr << "RenderGraph resource not found: " << id << std::endl;
   }
   return resources.at(id);
 }

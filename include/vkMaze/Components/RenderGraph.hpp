@@ -13,7 +13,7 @@ class VulkanContext;
 class Buffers;
 class ShapeManager;
 class LightManager;
-class Imgui;
+class VulkanImgui;
 
 enum PassType {
   MAIN_PASS = 0,
@@ -81,6 +81,7 @@ struct RenderGraphPass {
   std::vector<vk::raii::DescriptorSet> postImgDscSets;
 
   bool hasColorRead = false;
+  bool hasScratchRead = false;
   bool hasDepthRead = false;
 };
 
@@ -95,7 +96,7 @@ struct RenderGraphPassDsc {
 
 class RenderGraph {
 public:
-  void init(ShapeManager &shapes, LightManager &lights, VulkanContext &cxt, Swapchain &swp, Images &img, Descriptors &dsc, Buffers &buf, Imgui &gui) {
+  void init(ShapeManager &shapes, LightManager &lights, VulkanContext &cxt, Swapchain &swp, Images &img, Descriptors &dsc, Buffers &buf, VulkanImgui &gui) {
     this->cxt = &cxt;
     this->img = &img;
     this->swp = &swp;
@@ -115,6 +116,7 @@ public:
 
   size_t getUncompiledPassCount() const { return uncompiledPasses.size(); }
   RenderGraphPass *getCompiledPass(size_t index) { return index < compiledPasses.size() ? &compiledPasses.at(index) : nullptr; }
+  RenderGraphPassDsc *getUncompiledPass(size_t index) { return index < uncompiledPasses.size() ? &uncompiledPasses.at(index) : nullptr; }
   const std::vector<RenderGraphPass> &getCompiledPasses() const { return compiledPasses; }
   bool movePass(size_t from, size_t to);
   bool removePass(size_t index);
@@ -147,6 +149,7 @@ private:
   };
 
   uint32_t currentColor = 0;
+  uint32_t currentScratch = 0;
   uint32_t currentDepth = 0;
 
   Images *img = nullptr;
@@ -154,7 +157,7 @@ private:
   VulkanContext *cxt = nullptr;
   Descriptors *dsc = nullptr;
   Buffers *buf = nullptr;
-  Imgui *gui = nullptr;
+  VulkanImgui *gui = nullptr;
   std::unordered_map<std::string, RenderGraphResource> resources;
   std::vector<RenderGraphPass> compiledPasses;
   std::vector<RenderGraphPassDsc> uncompiledPasses;

@@ -26,7 +26,7 @@ struct PassDraft {
   std::vector<RenderGraphReadOverride> readOverrides;
 };
 
-void Imgui::startImgui() {
+void VulkanImgui::startImgui() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
@@ -60,7 +60,7 @@ void Imgui::startImgui() {
   ImGui_ImplGlfw_InitForVulkan(win->window, true);
 }
 
-void Imgui::drawRenderGraphEditorContents(RenderGraph *graph) {
+void VulkanImgui::drawRenderGraphEditorContents(RenderGraph *graph) {
   if (graph == nullptr) {
     ImGui::TextUnformatted("No RenderGraph bound.");
     return;
@@ -76,125 +76,164 @@ void Imgui::drawRenderGraphEditorContents(RenderGraph *graph) {
   ImGui::Separator();
   ImGui::TextUnformatted("Passes");
 
-  bool removedPass = false;
+  size_t passToRemove = static_cast<size_t>(-1);
+  size_t passCount = graph->getUncompiledPassCount();
 
-  /*
   for (size_t i = 0; i < passCount; i++) {
     ImGui::PushID(i);
-    RenderGraphPass *pass = graph->getPass(i);
+    RenderGraphPassDsc *pass = graph->getUncompiledPass(i);
+    if (pass == nullptr) {
+      ImGui::PopID();
+      continue;
+    }
     ImGui::TextUnformatted(pass->name.c_str());
     ImGui::SameLine();
     if (ImGui::Button("Remove")) {
-      graph->removePass(i);
+      passToRemove = i;
     }
     ImGui::PopID();
   }
 
-
-  ImGui::Separator();
-  ImGui::TextUnformatted("Selected Pass");
-  passCount = graph->getPassCount();
-  if (selectedPass >= 0 && static_cast<size_t>(selectedPass) < passCount) {
-    RenderGraphPass *pass = graph->getPass(static_cast<size_t>(selectedPass));
-    if (pass != nullptr) {
-      ImGui::InputText("Name", &pass->name);
-      const char *typeLabels[] = {"Main", "Post", "GUI"};
-      int passType = static_cast<int>(pass->type);
-      if (ImGui::Combo("Type", &passType, typeLabels, IM_ARRAYSIZE(typeLabels))) {
-        pass->type = static_cast<PassType>(passType);
-      }
-
-      ImGui::TextUnformatted("Reads");
-      for (const auto &read : pass->reads) {
-        ImGui::BulletText("%s", read.resource.c_str());
-      }
-      ImGui::TextUnformatted("Writes");
-      for (const auto &write : pass->writes) {
-        ImGui::BulletText("%s", write.resource.c_str());
-      }
-    }
-  } else {
-    ImGui::TextUnformatted("Select a pass to edit.");
+  if (passToRemove != static_cast<size_t>(-1)) {
+    graph->removePass(passToRemove);
   }
 
   ImGui::Separator();
   ImGui::TextUnformatted("Add Pass");
-  ImGui::InputText("New Name", &draft.name);
-  const char *typeLabels[] = {"Main", "Post", "GUI"};
-  ImGui::Combo("New Type", &draft.type, typeLabels, IM_ARRAYSIZE(typeLabels));
-  if (draft.type != MAIN_PASS) {
-    ImGui::InputText("Frag Shader", &draft.fragPath);
-    ImGui::InputText("Vert Shader", &draft.vertPath);
-  }
-  ImGui::Checkbox("Write Color", &draft.writeColor);
-  ImGui::Checkbox("Write Depth", &draft.writeDepth);
-  ImGui::Checkbox("Write Swap", &draft.writeSwap);
-  ImGui::Checkbox("Write Custom", &draft.writeCustom);
-  if (draft.writeCustom) {
-    ImGui::InputText("Custom Target", &draft.customWrite);
-  }
-
-  ImGui::TextUnformatted("Read Overrides");
-  for (size_t i = 0; i < draft.readOverrides.size(); i++) {
-    ImGui::PushID(static_cast<int>(i));
-    ImGui::InputText("Shader Resource", &draft.readOverrides[i].shaderResource);
-    ImGui::InputText("RG Resource", &draft.readOverrides[i].rgResource);
-    if (ImGui::SmallButton("Remove Override")) {
-      draft.readOverrides.erase(draft.readOverrides.begin() + static_cast<long>(i));
-      ImGui::PopID();
-      break;
+  for (size_t i = 0; i < passesToAdd.size(); i++) {
+    ImGui::PushID(i);
+    ImGui::TextUnformatted(passesToAdd.at(i).name.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Add")) {
+      for (RenderGraphPassDsc &dsc : passesToAdd.at(i).passes)
+        graph->addPass(dsc.name, dsc.pipelineDsc, dsc.readOverrides, dsc.writes, dsc.type);
     }
-    ImGui::Separator();
     ImGui::PopID();
   }
-  if (ImGui::SmallButton("Add Override")) {
-    draft.readOverrides.push_back({.shaderResource = "color", .rgResource = "color"});
-  }
-
-  if (ImGui::Button("Create Pass")) {
-    std::vector<RenderGraphAccess> writes;
-    writes.reserve(4);
-    if (draft.writeColor) {
-      writes.push_back({.resource = "color",
-                        .layout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .access = vk::AccessFlagBits2::eColorAttachmentWrite,
-                        .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput});
-    }
-    if (draft.writeDepth) {
-      writes.push_back({.resource = "depth",
-                        .layout = vk::ImageLayout::eDepthAttachmentOptimal,
-                        .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-                        .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests});
-    }
-    if (draft.writeSwap) {
-      writes.push_back({.resource = "swap",
-                        .layout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .access = vk::AccessFlagBits2::eColorAttachmentWrite,
-                        .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput});
-    }
-    if (draft.writeCustom && !draft.customWrite.empty()) {
-      writes.push_back({.resource = draft.customWrite,
-                        .layout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .access = vk::AccessFlagBits2::eColorAttachmentWrite,
-                        .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput});
-    }
-
-    PipelineDsc dsc = {};
-    if (draft.type != MAIN_PASS) {
-      dsc.fragPath = draft.fragPath;
-      dsc.vertPath = draft.vertPath;
-      dsc.topology = vk::PrimitiveTopology::eTriangleList;
-      dsc.polygonMode = vk::PolygonMode::eFill;
-      dsc.cullModeFlags = vk::CullModeFlagBits::eNone;
-    }
-
-    graph->addPass(draft.name, dsc, draft.readOverrides, writes, static_cast<PassType>(draft.type));
-    graph->compile();
-  }
-  */
 }
 
-void Imgui::drawRightSidePanel(RenderGraph *graph) {
+void VulkanImgui::makePassesToAdd() {
+
+  passesToAdd.push_back({
+
+      .name = "gaussianBlur",
+      .passes = {
+          {
+
+              .name = "gaussV",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragGaussianBlurV.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .readOverrides = {},
+              .writes = {
+                  {.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          },
+          {
+              .name = "gaussH",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragGaussianBlurH.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .writes = {
+                  {.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          },
+
+      }
+
+  });
+
+  passesToAdd.push_back({
+
+      .name = "bloom",
+      .passes = {
+          {
+
+              .name = "reflection",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragSeperateBrightness.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .readOverrides = {},
+              .writes = {
+                  {.resource = "brightness", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          },
+
+          {
+
+              .name = "bloomGaussV",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragGaussianBlurV.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .readOverrides = {{.shaderResource = "color", .rgResource = "brightness"}},
+              .writes = {
+                  {.resource = "scratch", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          },
+          {
+              .name = "bloomGaussH",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragGaussianBlurH.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .readOverrides = {{.shaderResource = "color", .rgResource = "scratch"}},
+              .writes = {
+                  {.resource = "scratch", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          },
+          {
+              .name = "bloomGaussCombine",
+              .type = POST_PASS,
+              .pipelineDsc = {
+                  .fragPath = "build/shaders/fragCombineImages.spv",
+                  .vertPath = "build/shaders/vertPost.spv",
+                  .topology = vk::PrimitiveTopology::eTriangleList,
+                  .polygonMode = vk::PolygonMode::eFill,
+                  .cullModeFlags = vk::CullModeFlagBits::eNone,
+              },
+              .readOverrides = {{.shaderResource = "image2", .rgResource = "scratch"}},
+              .writes = {
+                  {.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+                  {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests},
+              },
+          }
+
+      }
+
+  });
+}
+
+void VulkanImgui::drawRightSidePanel(RenderGraph *graph) {
+  ImGuiIO &io = ImGui::GetIO();
   const float panelWidth = 350.0f; // Adjust as needed
 
   ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -215,8 +254,8 @@ void Imgui::drawRightSidePanel(RenderGraph *graph) {
       ImGuiWindowFlags_NoCollapse;
 
   ImGui::Begin("Inspector", nullptr, flags);
+  ImGui::Text(" %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 
-  ImGui::Text("Right-Side Panel");
   ImGui::Separator();
 
   ImGui::BeginChild("RenderGraphEditor", ImVec2(0, 0), false);
@@ -226,7 +265,7 @@ void Imgui::drawRightSidePanel(RenderGraph *graph) {
   ImGui::End();
 }
 
-void Imgui::renderImgui(vk::raii::CommandBuffer &cmd) {
+void VulkanImgui::renderImgui(vk::raii::CommandBuffer &cmd) {
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();

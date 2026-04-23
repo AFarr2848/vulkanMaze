@@ -39,7 +39,7 @@ Descriptors dsc;
 class VKMaze : public VulkanEngine {
 public:
   RenderGraph renderGraph;
-  Imgui gui;
+  VulkanImgui gui;
 
   void makeShapes() override {
     std::cout << "Light size:" << sizeof(SSBOLight) << std::endl;
@@ -267,8 +267,15 @@ private:
 
     );
 
-    PipelineDsc blurDsc = {
-        .fragPath = "build/shaders/fragBoxBlur.spv",
+    PipelineDsc gaussBlurDscH = {
+        .fragPath = "build/shaders/fragGaussianBlurH.spv",
+        .vertPath = "build/shaders/vertPost.spv",
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullModeFlags = vk::CullModeFlagBits::eNone,
+    };
+    PipelineDsc gaussBlurDscV = {
+        .fragPath = "build/shaders/fragGaussianBlurV.spv",
         .vertPath = "build/shaders/vertPost.spv",
         .topology = vk::PrimitiveTopology::eTriangleList,
         .polygonMode = vk::PolygonMode::eFill,
@@ -291,6 +298,33 @@ private:
         .cullModeFlags = vk::CullModeFlagBits::eNone,
     };
     renderGraph.addPass(
+        "gaussV", gaussBlurDscV,
+        {},
+        {
+
+            {.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+            {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}
+
+        },
+        POST_PASS
+
+    );
+
+    renderGraph.addPass(
+        "gaussH", gaussBlurDscH,
+        {},
+        {
+
+            {.resource = "color", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput},
+            {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}
+
+        },
+        POST_PASS
+
+    );
+
+    /*
+    renderGraph.addPass(
         "brightness", brightnessDsc,
         {},
         {{.resource = "brightness", .layout = vk::ImageLayout::eColorAttachmentOptimal, .access = vk::AccessFlagBits2::eColorAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput}, {.resource = "depth", .layout = vk::ImageLayout::eDepthAttachmentOptimal, .access = vk::AccessFlagBits2::eDepthStencilAttachmentWrite, .stages = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests}},
@@ -298,7 +332,6 @@ private:
 
     );
 
-    /*
     renderGraph.addPass(
         "bloom1", bloomDsc,
         {},

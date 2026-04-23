@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <spirv_reflect.h>
+#include <string>
 #include <vkMaze/Components/Spirv.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #include <vkMaze/Objects/UBOs.hpp>
@@ -88,8 +89,11 @@ void SpirvReflectPipeline::makePipelineLayout(vk::raii::PipelineLayout &layout) 
 
 void SpirvReflectPipeline::readSpirv(const std::filesystem::path &path, SpvReflectShaderModule &module, vk::raii::ShaderModule &vkModule) {
   std::ifstream file(path, std::ios::binary | std::ios::ate);
-  if (!file.is_open())
-    throw std::runtime_error("Failed to open SPIR-V file");
+  if (!file.is_open()) {
+    std::string message = "Failed to open SPIR-V file ";
+    message += path;
+    throw std::runtime_error(message);
+  }
 
   size_t size = file.tellg();
   file.seekg(0);
