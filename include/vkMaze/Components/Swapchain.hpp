@@ -1,4 +1,4 @@
-
+#pragma once
 class VulkanContext;
 class Window;
 class Images;

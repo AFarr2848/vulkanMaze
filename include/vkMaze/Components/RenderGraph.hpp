@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <vulkan/vulkan_raii.hpp>
 
 class Images;
 class Swapchain;
@@ -135,6 +136,15 @@ public:
 
   void setFinalImage(vk::Image *img) { finalImage = img; }
 
+  VulkanImgui *gui = nullptr;
+  Swapchain *swp = nullptr;
+  Buffers *buf = nullptr;
+
+  ShapeManager *shapes = nullptr;
+  LightManager *lights = nullptr;
+
+  std::vector<vk::raii::DescriptorSet> globalDscSets;
+
 private:
   struct BarrierPoint {
   public:
@@ -153,11 +163,8 @@ private:
   uint32_t currentDepth = 0;
 
   Images *img = nullptr;
-  Swapchain *swp = nullptr;
   VulkanContext *cxt = nullptr;
   Descriptors *dsc = nullptr;
-  Buffers *buf = nullptr;
-  VulkanImgui *gui = nullptr;
   std::unordered_map<std::string, RenderGraphResource> resources;
   std::vector<RenderGraphPass> compiledPasses;
   std::vector<RenderGraphPassDsc> uncompiledPasses;
@@ -165,10 +172,7 @@ private:
 
   std::unordered_map<uint32_t, std::vector<BarrierPoint>> resourceBarriers;
 
-  std::vector<vk::raii::DescriptorSet> globalDscSets;
   vk::raii::Sampler sampler = nullptr;
-  ShapeManager *shapes = nullptr;
-  LightManager *lights = nullptr;
 
   vk::Image *finalImage = nullptr;
 
@@ -176,10 +180,6 @@ private:
   RenderGraphPass createPassFromDsc(RenderGraphPassDsc &dsc);
   std::vector<std::vector<uint32_t>> makePassDag(const std::vector<RenderGraphPass> &passes) const;
   std::vector<int> flattenDAG(const std::vector<std::vector<uint32_t>> &dag) const;
-
-  void recordMain(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
-  void recordPost(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
-  void recordGui(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass);
 
   void createPingPongResources();
 };

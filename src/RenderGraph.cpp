@@ -10,6 +10,7 @@
 #include "vkMaze/Objects/Shapes.hpp"
 #include "vkMaze/Objects/UBOs.hpp"
 #include "vkMaze/Objects/Material.hpp"
+#include "vkMaze/Records.hpp"
 #include "vulkan/vulkan.hpp"
 #include "vkMaze/Components/Imgui.hpp"
 #include <cstdint>
@@ -19,217 +20,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vulkan/vulkan_raii.hpp>
-
-void RenderGraph::recordGui(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass) {
-
-  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
-  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-  vk::RenderingAttachmentInfo attachmentInfo;
-  vk::RenderingAttachmentInfo depthAttachmentInfo;
-  for (auto &write : pass.writes) {
-    auto &resource = getResource(write.resource, imageIndex);
-    if (write.layout == vk::ImageLayout::eColorAttachmentOptimal)
-
-      attachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearColor
-
-      };
-    else if (write.layout == vk::ImageLayout::eDepthAttachmentOptimal || write.layout == vk::ImageLayout::eDepthAttachmentOptimalKHR)
-      depthAttachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearDepth
-
-      };
-  }
-  assert(attachmentInfo != nullptr);
-  if (depthAttachmentInfo == nullptr) {
-    depthAttachmentInfo = {
-        .imageView = nullptr,
-        .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue = clearDepth
-
-    };
-  }
-  vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swp->swapChainExtent},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &attachmentInfo,
-      .pDepthAttachment = &depthAttachmentInfo
-
-  };
-
-  cmd.beginRendering(renderingInfo);
-
-  cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
-  cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
-
-  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline.graphicsPipeline);
-  if (pass.pipeline.usesSet(0))
-    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline.pipelineLayout, 0, *pass.postImgDscSets[frameIndex], nullptr);
-  cmd.draw(3, 1, 0, 0);
-  gui->renderImgui(cmd);
-
-  cmd.endRendering();
-}
-
-void RenderGraph::recordPost(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass) {
-
-  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
-  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-  vk::RenderingAttachmentInfo attachmentInfo;
-  vk::RenderingAttachmentInfo depthAttachmentInfo;
-  for (auto &write : pass.writes) {
-    auto &resource = getResource(write.resource, imageIndex);
-    if (write.layout == vk::ImageLayout::eColorAttachmentOptimal)
-
-      attachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearColor
-
-      };
-    else if (write.layout == vk::ImageLayout::eDepthAttachmentOptimal || write.layout == vk::ImageLayout::eDepthAttachmentOptimalKHR)
-      depthAttachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearDepth
-
-      };
-  }
-  assert(attachmentInfo != nullptr);
-  if (depthAttachmentInfo == nullptr) {
-    depthAttachmentInfo = {
-        .imageView = nullptr,
-        .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue = clearDepth
-
-    };
-  }
-  vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swp->swapChainExtent},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &attachmentInfo,
-      .pDepthAttachment = &depthAttachmentInfo
-
-  };
-
-  cmd.beginRendering(renderingInfo);
-
-  cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
-  cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
-
-  cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pass.pipeline.graphicsPipeline);
-  if (pass.pipeline.usesSet(0))
-    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pass.pipeline.pipelineLayout, 0, *pass.postImgDscSets[frameIndex], nullptr);
-  cmd.draw(3, 1, 0, 0);
-
-  cmd.endRendering();
-}
-
-void RenderGraph::recordMain(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex, RenderGraphPass &pass) {
-
-  vk::ClearValue clearColor = vk::ClearColorValue(0.05f, 0.03f, 0.05f, 1.0f);
-  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-  vk::RenderingAttachmentInfo attachmentInfo;
-  vk::RenderingAttachmentInfo depthAttachmentInfo;
-  for (auto &write : pass.writes) {
-    auto &resource = getResource(write.resource, imageIndex);
-    assert(write.layout == resource.layout);
-    if (write.layout == vk::ImageLayout::eColorAttachmentOptimal) {
-
-      assert(resource.getImageView() != nullptr);
-      attachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearColor
-
-      };
-    }
-    if (write.layout == vk::ImageLayout::eDepthAttachmentOptimal || write.layout == vk::ImageLayout::eDepthAttachmentOptimalKHR) {
-
-      assert(resource.getImageView() != nullptr);
-      depthAttachmentInfo = {
-          .imageView = resource.getImageView(),
-          .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-          .loadOp = vk::AttachmentLoadOp::eClear,
-          .storeOp = vk::AttachmentStoreOp::eStore,
-          .clearValue = clearDepth
-
-      };
-    }
-  }
-  assert(attachmentInfo.imageView && depthAttachmentInfo.imageView);
-  vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swp->swapChainExtent},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &attachmentInfo,
-      .pDepthAttachment = &depthAttachmentInfo
-
-  };
-  cmd.beginRendering(renderingInfo);
-
-  cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swp->swapChainExtent.width), static_cast<float>(swp->swapChainExtent.height), 0.0f, 1.0f));
-  cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swp->swapChainExtent));
-
-  cmd.bindVertexBuffers(0, *buf->vertexBuffer, {0});
-  cmd.bindIndexBuffer(*buf->indexBuffer, 0, vk::IndexType::eUint32);
-
-  std::vector<Shape *> drawShapes = shapes->getDrawOrder();
-  Material *currentMaterial = nullptr;
-  Pipeline *currentPipeline = nullptr;
-
-  for (Shape *s : drawShapes) {
-
-    if (s->pipeline != currentPipeline) {
-      currentPipeline = s->pipeline;
-      currentMaterial = nullptr;
-      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, currentPipeline->graphicsPipeline);
-      if (currentPipeline->usesSet(0))
-        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 0, *globalDscSets[frameIndex], nullptr);
-      if (currentPipeline->usesSet(2))
-        cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, currentPipeline->pipelineLayout, 2, *lights->dscSets[frameIndex], nullptr);
-    }
-    if (s->material != currentMaterial && currentPipeline->usesSet(1)) {
-      cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, s->pipeline->pipelineLayout, 1, *s->material->albedo.descriptorSet, nullptr);
-      currentMaterial = s->material;
-    }
-
-    if (s->pipeline->hasPushConstants) {
-      PushConstant pc = PushConstant();
-      pc.lightNums = lights->getLightNums();
-      pc.transformIndex = s->transformIndex;
-      const auto *pcBytes = reinterpret_cast<const uint8_t *>(&pc);
-      cmd.pushConstants(s->pipeline->pipelineLayout,
-                        s->pipeline->pcRange.stageFlags,
-                        s->pipeline->pcRange.offset,
-                        vk::ArrayProxy<const uint8_t>(s->pipeline->pcRange.size, pcBytes));
-    }
-
-    cmd.drawIndexed(s->range.indexCount, 1, s->range.indexOffset, s->range.vertexOffset, 0);
-  }
-
-  cmd.endRendering();
-}
 
 void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uint32_t imageIndex) {
   img->transition_image_layout(
@@ -262,13 +52,13 @@ void RenderGraph::execute(vk::raii::CommandBuffer &cmd, uint32_t frameIndex, uin
 
     switch (pass.type) {
     case MAIN_PASS:
-      recordMain(cmd, frameIndex, imageIndex, pass);
+      recordMain(cmd, frameIndex, imageIndex, *this, pass);
       break;
     case POST_PASS:
-      recordPost(cmd, frameIndex, imageIndex, pass);
+      recordPost(cmd, frameIndex, imageIndex, *this, pass);
       break;
     case GUI_PASS:
-      recordGui(cmd, frameIndex, imageIndex, pass);
+      recordGui(cmd, frameIndex, imageIndex, *this, pass);
       break;
     }
   }
@@ -359,7 +149,13 @@ RenderGraphPass RenderGraph::createPassFromDsc(RenderGraphPassDsc &dsc) {
 }
 
 RenderGraphPassDsc &RenderGraph::addPass(std::string name, const PipelineDsc dsc, std::vector<RenderGraphReadOverride> reads, std::vector<RenderGraphAccess> writes, PassType type) {
-  RenderGraphPassDsc pass = {.name = name, .type = type, .pipelineDsc = dsc, .readOverrides = reads, .writes = writes};
+  RenderGraphPassDsc pass = {
+      .name = name,
+      .type = type,
+      .pipelineDsc = dsc,
+      .readOverrides = reads,
+      .writes = writes,
+  };
   auto insertIt = uncompiledPasses.end();
   if (type != GUI_PASS) {
     insertIt = std::find_if(uncompiledPasses.begin(), uncompiledPasses.end(), [](const RenderGraphPassDsc &existingPass) {

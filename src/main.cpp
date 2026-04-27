@@ -1,4 +1,3 @@
-#include "vkMaze/Components/EngineConfig.hpp"
 #include "vkMaze/Components/RenderGraph.hpp"
 #include "vkMaze/Components/VulkanContext.hpp"
 #include "vkMaze/Components/Window.hpp"

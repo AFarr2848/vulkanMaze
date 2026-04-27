@@ -1,5 +1,4 @@
-#include <iostream>
-#include <unordered_map>
+#pragma once
 #include <glm/glm.hpp>
 class VulkanContext;
 class Buffers;
